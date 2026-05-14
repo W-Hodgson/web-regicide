@@ -18,7 +18,9 @@
         <input id="name-input" type="text" maxlength="16" placeholder="Adventurer" autocomplete="off">
       </label>
       <div class="lobby-actions">
-        <button id="create-btn" class="primary">Create a new room</button>
+        <button id="solo-btn" class="primary">Play solo</button>
+        <div class="or muted">— or —</div>
+        <button id="create-btn">Create a new room</button>
         <div class="or muted">— or —</div>
         <div class="join-row">
           <input id="join-code" type="text" placeholder="ROOM" maxlength="5" autocomplete="off" spellcheck="false">
@@ -75,6 +77,7 @@
       <span id="action-prompt"></span>
       <button id="play-btn" class="primary" disabled>Play selected</button>
       <button id="discard-btn" hidden disabled>Discard selected</button>
+      <button id="jester-btn" hidden>Use Jester</button>
       <button id="yield-btn">Yield</button>
     </div>
   </section>

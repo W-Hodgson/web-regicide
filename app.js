@@ -6,11 +6,14 @@ const APP_ID = 'regicide-clide-2026';
 const ROOM_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const LOG_MAX = 80;
 
+const SOLO_ID = 'solo';
+
 const state = {
   screen: 'lobby',         // 'lobby' | 'room' | 'game'
   name: '',
   roomCode: null,
   isHost: false,
+  isSolo: false,
   hostPeerId: null,
   room: null,
   send: {},
@@ -22,6 +25,8 @@ const state = {
   gameOver: false,
 };
 
+const myId = () => (state.isSolo ? SOLO_ID : selfId);
+
 // ===== DOM refs =====
 
 const $ = id => document.getElementById(id);
@@ -30,6 +35,7 @@ const els = {
   room: $('room'),
   game: $('game'),
   nameInput: $('name-input'),
+  soloBtn: $('solo-btn'),
   createBtn: $('create-btn'),
   joinCode: $('join-code'),
   joinBtn: $('join-btn'),
@@ -51,6 +57,7 @@ const els = {
   actionPrompt: $('action-prompt'),
   playBtn: $('play-btn'),
   discardBtn: $('discard-btn'),
+  jesterBtn: $('jester-btn'),
   yieldBtn: $('yield-btn'),
   rulesDialog: $('rules-dialog'),
   rulesClose: $('rules-close'),
@@ -210,6 +217,7 @@ function cleanupAndReturnToLobby() {
   }
   state.room = null;
   state.isHost = false;
+  state.isSolo = false;
   state.hostPeerId = null;
   state.rosters = {};
   state.game = null;
@@ -238,12 +246,19 @@ function processAction(action) {
     case 'chooseNext':
       result = engine.applyChooseNext(state.game, action.playerId, action.targetPlayerId);
       break;
+    case 'useJester':
+      result = engine.applyUseJester(state.game, action.playerId);
+      break;
     default:
       return;
   }
   if (result.error) {
-    state.send.sendErr(result.error, action.playerId);
-    if (action.playerId === selfId) flashError(result.error);
+    if (state.isSolo) {
+      flashError(result.error);
+    } else {
+      state.send.sendErr(result.error, action.playerId);
+      if (action.playerId === selfId) flashError(result.error);
+    }
     return;
   }
   state.game = result.state;
@@ -260,15 +275,37 @@ function broadcastGameState() {
   if (state.log.length > LOG_MAX) state.log = state.log.slice(-LOG_MAX);
 
   // Self view (host is also a player)
-  state.view = engine.viewFor(state.game, selfId);
+  state.view = engine.viewFor(state.game, myId());
   state.gameOver = state.view.phase === 'won' || state.view.phase === 'lost';
   renderGame();
+
+  if (state.isSolo) return;
 
   // Per-peer views
   for (const peerId of Object.keys(state.room.getPeers())) {
     const v = engine.viewFor(state.game, peerId);
     state.send.sendState({ view: v, log: state.log }, peerId);
   }
+}
+
+function startSoloGame() {
+  state.isSolo = true;
+  state.isHost = false;
+  state.hostPeerId = null;
+  state.room = null;
+  state.send = {};
+  state.rosters = { [SOLO_ID]: { id: SOLO_ID, name: state.name } };
+  try {
+    state.game = engine.createGame([{ id: SOLO_ID, name: state.name }]);
+  } catch (e) {
+    setStatus(String(e.message || e), 'lobby');
+    return;
+  }
+  state.log = [];
+  state.gameOver = false;
+  state.selected.clear();
+  showScreen('game');
+  broadcastGameState();
 }
 
 function startGame() {
@@ -295,8 +332,8 @@ function startGame() {
 // ===== Local dispatch =====
 
 function dispatchAction(action) {
-  action.playerId = selfId;
-  if (state.isHost) processAction(action);
+  action.playerId = myId();
+  if (state.isHost || state.isSolo) processAction(action);
   else state.send.sendAct(action);
 }
 
@@ -340,6 +377,8 @@ function formatEvent(e) {
       return `${nameOf(e.playerId)} discarded ${e.cardIds.join(', ')} for ${e.total}`;
     case 'next_chosen':
       return `${nameOf(e.byPlayerId)} chose ${nameOf(e.chosenPlayerId)} to go next`;
+    case 'solo_jester':
+      return `★ Jester used — discarded ${e.discarded}, drew ${e.drew} (${e.jestersLeft} left)`;
     case 'game_over':
       if (e.won) return '★ VICTORY — all 12 royals defeated';
       if (e.reason === 'damage') return `✖ ${nameOf(e.playerId)} fell to ${e.incoming} damage`;
@@ -469,14 +508,15 @@ function renderGame() {
 
   // Players row
   els.playersRow.innerHTML = '';
-  const choosing = v.phase === 'choose_next' && v.currentPlayerId === selfId;
+  const choosing = v.phase === 'choose_next' && v.currentPlayerId === myId();
+  const meId = myId();
   for (const p of v.players) {
     const pe = document.createElement('div');
     pe.className = 'player-card';
     if (p.isCurrent) pe.classList.add('current');
-    if (p.id === selfId) pe.classList.add('you');
+    if (p.id === meId) pe.classList.add('you');
     pe.innerHTML = `
-      <div class="pname">${escapeHtml(p.name)}${p.id === selfId ? ' · you' : ''}${p.isCurrent ? ' ★' : ''}</div>
+      <div class="pname">${escapeHtml(p.name)}${p.id === meId ? ' · you' : ''}${p.isCurrent ? ' ★' : ''}</div>
       <div class="hand-count">${p.handCount} cards${p.yieldedLast ? ' · yielded last' : ''}</div>
     `;
     if (choosing) {
@@ -489,7 +529,7 @@ function renderGame() {
   }
 
   // Hand
-  const me = v.players.find(p => p.id === selfId);
+  const me = v.players.find(p => p.id === meId);
   const hand = me?.hand || [];
   els.handTitle.textContent = `Your hand (${hand.length}/${v.handSize})`;
   els.handCards.innerHTML = '';
@@ -517,11 +557,15 @@ function updateActionBar() {
   els.playBtn.disabled = true;
   els.discardBtn.hidden = true;
   els.discardBtn.disabled = true;
+  els.jesterBtn.hidden = true;
+  els.jesterBtn.disabled = true;
   els.yieldBtn.hidden = false;
   els.yieldBtn.disabled = true;
 
   if (v.phase === 'won') {
-    els.actionPrompt.textContent = '★ All royals defeated. Victory!';
+    els.actionPrompt.textContent = v.isSolo
+      ? `★ ${soloMedal(v.jestersLeft)} victory — defeated all 12 royals (Jesters used: ${2 - v.jestersLeft})`
+      : '★ All royals defeated. Victory!';
     els.actionPrompt.classList.add('over');
     els.playBtn.hidden = true;
     els.yieldBtn.hidden = true;
@@ -542,10 +586,17 @@ function updateActionBar() {
   }
 
   if (v.phase === 'play') {
-    els.actionPrompt.textContent = 'Your turn — pick cards to play, or yield.';
+    els.actionPrompt.textContent = v.isSolo
+      ? 'Your turn — play cards, use a Jester, or yield.'
+      : 'Your turn — pick cards to play, or yield.';
     els.actionPrompt.classList.add('urgent');
     els.playBtn.disabled = state.selected.size === 0;
     els.yieldBtn.disabled = !v.canYieldNow;
+    if (v.isSolo) {
+      els.jesterBtn.hidden = false;
+      els.jesterBtn.disabled = v.jestersLeft <= 0;
+      els.jesterBtn.textContent = `Use Jester (${v.jestersLeft})`;
+    }
   } else if (v.phase === 'damage') {
     const total = sumSelected();
     els.actionPrompt.textContent = `You must discard at least ${v.pendingDamage}.`;
@@ -563,10 +614,15 @@ function updateActionBar() {
   }
 }
 
+function soloMedal(jestersLeft) {
+  const used = 2 - jestersLeft;
+  return used === 0 ? 'Gold' : used === 1 ? 'Silver' : 'Bronze';
+}
+
 function sumSelected() {
   const v = state.view;
   if (!v) return 0;
-  const hand = v.players.find(p => p.id === selfId)?.hand || [];
+  const hand = v.players.find(p => p.id === myId())?.hand || [];
   return hand.filter(c => state.selected.has(c.id)).reduce((s, c) => s + engine.cardValue(c), 0);
 }
 
@@ -583,6 +639,11 @@ function escapeHtml(s) {
 }
 
 // ===== Event listeners =====
+
+els.soloBtn.addEventListener('click', () => {
+  state.name = (els.nameInput.value.trim() || 'Anonymous').slice(0, 16);
+  startSoloGame();
+});
 
 els.createBtn.addEventListener('click', () => {
   state.name = (els.nameInput.value.trim() || 'Anonymous').slice(0, 16);
@@ -617,6 +678,11 @@ els.discardBtn.addEventListener('click', () => {
 
 els.yieldBtn.addEventListener('click', () => {
   dispatchAction({ type: 'yield' });
+});
+
+els.jesterBtn.addEventListener('click', () => {
+  state.selected.clear();
+  dispatchAction({ type: 'useJester' });
 });
 
 els.rulesBtn.addEventListener('click', () => els.rulesDialog.showModal());

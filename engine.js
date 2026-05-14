@@ -108,10 +108,12 @@ export function createGame(players, options = {}) {
   }
 
   const enemy = castle.pop();
+  const isSolo = numPlayers === 1;
 
   return {
     seed,
     numPlayers,
+    isSolo,
     handSize,
     players: gamePlayers,
     tavern,
@@ -127,6 +129,7 @@ export function createGame(players, options = {}) {
     pendingDamage: 0,
     enemiesDefeated: 0,
     totalEnemies: TOTAL_ENEMIES,
+    jestersLeft: isSolo ? 2 : 0,
     lossReason: null,
     events: [],
   };
@@ -420,6 +423,32 @@ export function applyDiscard(state, playerId, cardIds) {
   return { state: s, events: s.events };
 }
 
+export function applyUseJester(state, playerId) {
+  if (!state.isSolo) return { error: 'Jesters can only be used in solo' };
+  const t = turnError(state, playerId, 'play');
+  if (t) return { error: t };
+  if (state.jestersLeft <= 0) return { error: 'No Jesters remaining' };
+
+  const s = structuredClone(state);
+  s.events = [];
+  const player = s.players[s.currentPlayerIndex];
+  const discarded = player.hand.slice();
+  s.discard.push(...discarded);
+  player.hand = [];
+  while (player.hand.length < s.handSize && s.tavern.length > 0) {
+    player.hand.push(s.tavern.pop());
+  }
+  s.jestersLeft -= 1;
+  s.events.push({
+    type: 'solo_jester',
+    playerId,
+    discarded: discarded.length,
+    drew: player.hand.length,
+    jestersLeft: s.jestersLeft,
+  });
+  return { state: s, events: s.events };
+}
+
 export function applyChooseNext(state, playerId, targetPlayerId) {
   const t = turnError(state, playerId, 'choose_next');
   if (t) return { error: t };
@@ -440,6 +469,8 @@ export function viewFor(state, playerId) {
   return {
     phase: state.phase,
     numPlayers: state.numPlayers,
+    isSolo: state.isSolo,
+    jestersLeft: state.jestersLeft,
     handSize: state.handSize,
     enemy: state.enemy,
     enemyHealth: state.enemy ? ENEMY_HEALTH[state.enemy.rank] : 0,
