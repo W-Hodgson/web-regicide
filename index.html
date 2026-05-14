@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f1419">
 <title>regicide — co-op in the browser</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -44,41 +45,47 @@
   </section>
 
   <section id="game" hidden>
-    <div id="game-header">
-      <span id="enemies-progress"></span>
-      <button id="rules-btn" title="Rules (?)">?</button>
-      <button id="leave-game-btn">Leave</button>
-    </div>
-
-    <div id="enemy-area"></div>
-
-    <div id="middle-row">
-      <div class="panel" id="played-area">
-        <h3>Played against this enemy</h3>
-        <div id="played-cards" class="card-row"></div>
+    <div id="game-scroll">
+      <div id="game-header">
+        <span id="enemies-progress"></span>
+        <button id="rules-btn" title="Rules (?)">?</button>
+        <button id="leave-game-btn">Leave</button>
       </div>
-      <div class="panel" id="log-area">
-        <h3>Log</h3>
-        <ul id="log"></ul>
+
+      <div id="enemy-area"></div>
+
+      <div id="middle-row">
+        <div class="panel" id="played-area">
+          <h3>Played against this enemy</h3>
+          <div id="played-cards" class="card-row"></div>
+        </div>
+        <div class="panel" id="log-area">
+          <h3>Log</h3>
+          <ul id="log"></ul>
+        </div>
+      </div>
+
+      <div class="panel" id="players-area">
+        <h3>Players</h3>
+        <div id="players-row"></div>
       </div>
     </div>
 
-    <div class="panel" id="players-area">
-      <h3>Players</h3>
-      <div id="players-row"></div>
-    </div>
+    <div id="game-bottom">
+      <div id="hand-area">
+        <h3 id="hand-title">Your hand</h3>
+        <div id="hand-cards" class="card-row hand"></div>
+      </div>
 
-    <div class="panel" id="hand-area">
-      <h3 id="hand-title">Your hand</h3>
-      <div id="hand-cards" class="card-row hand"></div>
-    </div>
-
-    <div id="action-bar" class="panel">
-      <span id="action-prompt"></span>
-      <button id="play-btn" class="primary" disabled>Play selected</button>
-      <button id="discard-btn" hidden disabled>Discard selected</button>
-      <button id="jester-btn" hidden>Use Jester</button>
-      <button id="yield-btn">Yield</button>
+      <div id="action-bar">
+        <span id="action-prompt"></span>
+        <div id="action-buttons">
+          <button id="play-btn" class="primary" disabled>Play</button>
+          <button id="discard-btn" hidden disabled>Discard</button>
+          <button id="jester-btn" hidden>Use Jester</button>
+          <button id="yield-btn">Yield</button>
+        </div>
+      </div>
     </div>
   </section>
 

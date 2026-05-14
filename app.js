@@ -27,6 +27,16 @@ const state = {
 
 const myId = () => (state.isSolo ? SOLO_ID : selfId);
 
+const RANK_ORDER = { X: 0, A: 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, J: 11, Q: 12, K: 13 };
+const SUIT_ORDER = { H: 0, D: 1, C: 2, S: 3 };
+function sortHand(hand) {
+  return hand.slice().sort((a, b) => {
+    const r = (RANK_ORDER[a.rank] ?? 99) - (RANK_ORDER[b.rank] ?? 99);
+    if (r) return r;
+    return (SUIT_ORDER[a.suit] ?? 99) - (SUIT_ORDER[b.suit] ?? 99);
+  });
+}
+
 // ===== DOM refs =====
 
 const $ = id => document.getElementById(id);
@@ -225,6 +235,7 @@ function cleanupAndReturnToLobby() {
   state.log = [];
   state.selected.clear();
   state.gameOver = false;
+  document.body.classList.remove('solo');
   showScreen('lobby');
 }
 
@@ -456,6 +467,8 @@ function renderGame() {
   const v = state.view;
   if (!v) return;
 
+  document.body.classList.toggle('solo', !!v.isSolo);
+
   // Header
   if (v.phase === 'won') {
     els.enemiesProgress.textContent = `★ Victory — defeated all ${v.totalEnemies} royals`;
@@ -530,7 +543,7 @@ function renderGame() {
 
   // Hand
   const me = v.players.find(p => p.id === meId);
-  const hand = me?.hand || [];
+  const hand = sortHand(me?.hand || []);
   els.handTitle.textContent = `Your hand (${hand.length}/${v.handSize})`;
   els.handCards.innerHTML = '';
   const selectable = v.yourTurn && (v.phase === 'play' || v.phase === 'damage');
@@ -587,15 +600,17 @@ function updateActionBar() {
 
   if (v.phase === 'play') {
     els.actionPrompt.textContent = v.isSolo
-      ? 'Your turn — play cards, use a Jester, or yield.'
-      : 'Your turn — pick cards to play, or yield.';
+      ? 'Your turn — play, Jester, or yield.'
+      : 'Your turn — play or yield.';
     els.actionPrompt.classList.add('urgent');
     els.playBtn.disabled = state.selected.size === 0;
+    const total = sumSelected();
+    els.playBtn.textContent = state.selected.size ? `Play (${total})` : 'Play';
     els.yieldBtn.disabled = !v.canYieldNow;
     if (v.isSolo) {
       els.jesterBtn.hidden = false;
       els.jesterBtn.disabled = v.jestersLeft <= 0;
-      els.jesterBtn.textContent = `Use Jester (${v.jestersLeft})`;
+      els.jesterBtn.textContent = `Jester (${v.jestersLeft})`;
     }
   } else if (v.phase === 'damage') {
     const total = sumSelected();
@@ -605,7 +620,7 @@ function updateActionBar() {
     els.yieldBtn.hidden = true;
     els.discardBtn.hidden = false;
     els.discardBtn.disabled = total < v.pendingDamage;
-    els.discardBtn.textContent = `Discard selected (${total} / ${v.pendingDamage})`;
+    els.discardBtn.textContent = `Discard (${total}/${v.pendingDamage})`;
   } else if (v.phase === 'choose_next') {
     els.actionPrompt.textContent = 'Choose any player to go next.';
     els.actionPrompt.classList.add('urgent');
