@@ -124,7 +124,7 @@ export function createGame(players, options = {}) {
     enemyShield: 0,
     enemyImmunityNegated: false,
     playedAgainstEnemy: [],
-    currentPlayerIndex: 0,
+    currentPlayerIndex: Math.floor(rand() * numPlayers),
     phase: 'play', // play | damage | choose_next | won | lost
     pendingDamage: 0,
     enemiesDefeated: 0,
