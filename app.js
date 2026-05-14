@@ -1,5 +1,5 @@
 // app.js — Trystero P2P + DOM rendering
-import { joinRoom, selfId } from 'https://esm.sh/trystero/torrent'
+import { joinRoom, selfId } from 'https://esm.sh/@trystero-p2p/torrent'
 import * as engine from './engine.js'
 
 const APP_ID = 'regicide-clide-2026';
