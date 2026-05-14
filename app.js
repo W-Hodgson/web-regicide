@@ -23,7 +23,12 @@ const state = {
   log: [],
   selected: new Set(),
   gameOver: false,
+  connecting: false,
+  joinTimeout: null,
 };
+
+const JOIN_TIMEOUT_MS = 10000;
+const ROOM_CODE_LEN = 5;
 
 const myId = () => (state.isSolo ? SOLO_ID : selfId);
 
@@ -167,6 +172,14 @@ function setupRoom(roomCode, asHost) {
 
   getHost((_payload, peerId) => {
     state.hostPeerId = peerId;
+    if (state.joinTimeout) {
+      clearTimeout(state.joinTimeout);
+      state.joinTimeout = null;
+      setLobbyConnecting(false);
+      setStatus('', 'lobby');
+      showScreen('room');
+      renderRoom();
+    }
   });
 
   getLobby((snapshot, peerId) => {
@@ -204,8 +217,11 @@ function setupRoom(roomCode, asHost) {
   });
 
   els.roomCodeDisplay.textContent = roomCode;
-  showScreen('room');
-  renderRoom();
+  if (asHost) {
+    showScreen('room');
+    renderRoom();
+  }
+  // Joiners stay on the lobby until getHost confirms a real room exists.
 }
 
 function lobbySnapshot() {
@@ -222,6 +238,10 @@ function broadcastError(msg) {
 }
 
 function cleanupAndReturnToLobby() {
+  if (state.joinTimeout) {
+    clearTimeout(state.joinTimeout);
+    state.joinTimeout = null;
+  }
   if (state.room) {
     try { state.room.leave(); } catch {}
   }
@@ -236,6 +256,7 @@ function cleanupAndReturnToLobby() {
   state.selected.clear();
   state.gameOver = false;
   document.body.classList.remove('solo');
+  setLobbyConnecting(false);
   showScreen('lobby');
 }
 
@@ -665,11 +686,42 @@ els.createBtn.addEventListener('click', () => {
   setupRoom(generateRoomCode(), true);
 });
 
+function updateJoinButton() {
+  const code = els.joinCode.value.trim();
+  els.joinBtn.disabled = state.connecting || code.length !== ROOM_CODE_LEN;
+}
+
+function setLobbyConnecting(connecting) {
+  state.connecting = connecting;
+  els.soloBtn.disabled = connecting;
+  els.createBtn.disabled = connecting;
+  els.joinCode.disabled = connecting;
+  els.nameInput.disabled = connecting;
+  updateJoinButton();
+}
+
+els.joinCode.addEventListener('input', () => {
+  const cleaned = els.joinCode.value
+    .toUpperCase()
+    .replace(/[^A-HJ-NP-Z2-9]/g, '')
+    .slice(0, ROOM_CODE_LEN);
+  if (cleaned !== els.joinCode.value) els.joinCode.value = cleaned;
+  updateJoinButton();
+});
+
 els.joinBtn.addEventListener('click', () => {
   const code = els.joinCode.value.trim().toUpperCase();
-  if (!code) { setStatus('Enter a room code.', 'lobby'); return; }
+  if (code.length !== ROOM_CODE_LEN) return;
   state.name = (els.nameInput.value.trim() || 'Anonymous').slice(0, 16);
+  setLobbyConnecting(true);
+  setStatus(`Searching for room ${code}…`, 'lobby');
   setupRoom(code, false);
+  state.joinTimeout = setTimeout(() => {
+    if (state.hostPeerId) return; // host found in time
+    state.joinTimeout = null;
+    cleanupAndReturnToLobby();
+    setStatus(`No room found with code ${code}.`, 'lobby');
+  }, JOIN_TIMEOUT_MS);
 });
 
 els.startBtn.addEventListener('click', startGame);
@@ -715,3 +767,4 @@ document.addEventListener('keydown', e => {
 
 // Initial
 showScreen('lobby');
+updateJoinButton();
