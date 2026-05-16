@@ -14,8 +14,36 @@
   --card-black: #1c1c1c;
   --border: #2c3340;
   --border-2: #3a4252;
+  --primary-fg: #1c1c1c;
+  --button-hover-bg: #2d3645;
+  --primary-hover-bg: #e6c14f;
+  --backdrop: rgba(0,0,0,0.7);
+  --shadow: rgba(0,0,0,0.4);
+  --glow: rgba(212,175,55,0.55);
+  --glow-soft: rgba(212,175,55,0.2);
   --safe-bottom: env(safe-area-inset-bottom);
   --safe-top: env(safe-area-inset-top);
+}
+
+:root[data-theme="light"] {
+  --bg: #DDD5D0;
+  --bg-2: #CFC0BD;
+  --panel: #DDD5D0;
+  --panel-2: #CFC0BD;
+  --text: #586F6B;
+  --text-dim: #7F9183;
+  --gold: #586F6B;
+  --red: #586F6B;
+  --green: #7F9183;
+  --border: #B8B8AA;
+  --border-2: #7F9183;
+  --primary-fg: #DDD5D0;
+  --button-hover-bg: #B8B8AA;
+  --primary-hover-bg: #7F9183;
+  --backdrop: rgba(88,111,107,0.45);
+  --shadow: rgba(88,111,107,0.25);
+  --glow: rgba(88,111,107,0.55);
+  --glow-soft: rgba(88,111,107,0.25);
 }
 
 * { box-sizing: border-box; }
@@ -62,11 +90,11 @@ button {
   min-height: 44px;
   transition: background 0.15s, border-color 0.15s, transform 0.05s;
 }
-button:hover:not(:disabled) { background: #2d3645; border-color: var(--gold); }
+button:hover:not(:disabled) { background: var(--button-hover-bg); border-color: var(--gold); }
 button:active:not(:disabled) { transform: translateY(1px); }
 button:disabled { opacity: 0.35; cursor: not-allowed; }
-button.primary { background: var(--gold); color: #1c1c1c; border-color: var(--gold); font-weight: 700; }
-button.primary:hover:not(:disabled) { background: #e6c14f; }
+button.primary { background: var(--gold); color: var(--primary-fg); border-color: var(--gold); font-weight: 700; }
+button.primary:hover:not(:disabled) { background: var(--primary-hover-bg); border-color: var(--primary-hover-bg); }
 
 input[type="text"] {
   background: var(--bg-2);
@@ -80,6 +108,23 @@ input[type="text"] {
   min-height: 44px;
 }
 input[type="text"]:focus { outline: none; border-color: var(--gold); }
+
+#theme-toggle {
+  position: fixed;
+  top: calc(6px + var(--safe-top));
+  right: calc(6px + env(safe-area-inset-right));
+  z-index: 1000;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 4px 10px;
+  font-size: 14px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  color: var(--text-dim);
+  opacity: 0.65;
+}
+#theme-toggle:hover:not(:disabled) { opacity: 1; background: var(--button-hover-bg); border-color: var(--gold); }
 
 kbd {
   background: var(--panel-2);
@@ -197,7 +242,7 @@ kbd {
   display: flex;
   justify-content: center;
   padding: 12px;
-  background: linear-gradient(180deg, #1a2028, #141a22);
+  background: linear-gradient(180deg, var(--panel), var(--bg-2));
   border: 1px solid var(--border);
   border-radius: 10px;
 }
@@ -263,10 +308,10 @@ kbd {
   min-width: 110px;
   flex: 1;
 }
-.player-card.current { border-color: var(--gold); box-shadow: 0 0 12px rgba(212,175,55,0.2); }
+.player-card.current { border-color: var(--gold); box-shadow: 0 0 12px var(--glow-soft); }
 .player-card.you { background: var(--bg-2); }
 .player-card.clickable { cursor: pointer; }
-.player-card.clickable:hover, .player-card.clickable:active { background: #2a3340; border-color: var(--green); }
+.player-card.clickable:hover, .player-card.clickable:active { background: var(--button-hover-bg); border-color: var(--green); }
 .player-card .pname { font-weight: 600; font-size: 13px; }
 .player-card .hand-count { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
 
@@ -350,10 +395,10 @@ body.solo #players-area { display: none; }
 .card.red   { color: var(--card-red); }
 .card.black { color: var(--card-black); }
 .card.disabled { cursor: default; opacity: 0.92; }
-.card:not(.disabled):hover { transform: translateY(-3px); box-shadow: 0 5px 12px rgba(0,0,0,0.4); }
+.card:not(.disabled):hover { transform: translateY(-3px); box-shadow: 0 5px 12px var(--shadow); }
 .card.selected {
   transform: translateY(-12px);
-  box-shadow: 0 10px 22px rgba(212,175,55,0.55);
+  box-shadow: 0 10px 22px var(--glow);
   border-color: var(--gold);
 }
 .card .rank {
@@ -426,7 +471,7 @@ dialog {
   font-family: inherit;
   font-size: 13px;
 }
-dialog::backdrop { background: rgba(0,0,0,0.7); }
+dialog::backdrop { background: var(--backdrop); }
 dialog ul { padding-left: 18px; }
 dialog li { margin: 4px 0; }
 dialog h3 { color: var(--gold); margin-top: 16px; }
