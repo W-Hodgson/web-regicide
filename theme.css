@@ -57,6 +57,8 @@ html, body {
   font-size: 14px;
   min-height: 100vh;
   min-height: 100dvh;
+  max-width: 100%;
+  overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: contain;
 }

@@ -11,7 +11,7 @@
 
 .tiles {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -19,12 +19,15 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-width: 0;
+  min-height: 140px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 18px 20px;
   color: var(--text);
   text-decoration: none;
+  overflow-wrap: anywhere;
   transition: border-color 0.15s, transform 0.05s, background 0.15s;
 }
 .tile:hover { border-color: var(--gold); }
@@ -48,6 +51,8 @@
   line-height: 1.5;
 }
 .tile-tag {
+  margin-top: auto;
+  padding-top: 4px;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -61,11 +66,11 @@
 
 @media (min-width: 720px) {
   #menu { padding: 80px 24px 40px; }
-  .tiles { grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
   .tile { padding: 22px 24px; }
   .tile h2 { font-size: 26px; }
 }
 
 @media (min-width: 1080px) {
-  .tiles { grid-template-columns: repeat(3, 1fr); }
+  .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
