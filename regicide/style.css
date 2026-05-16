@@ -20,6 +20,8 @@
 .join-row input { text-transform: uppercase; letter-spacing: 2px; text-align: center; font-weight: 700; }
 .join-row button { width: 100%; }
 .footer { margin-top: 32px; }
+.back-link { color: var(--text-dim); text-decoration: none; }
+.back-link:hover { color: var(--gold); }
 
 /* ===== Room ===== */
 

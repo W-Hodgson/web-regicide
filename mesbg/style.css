@@ -31,6 +31,12 @@
   letter-spacing: 2px;
 }
 
+.resume-panel { margin-bottom: 14px; text-align: left; }
+.resume-title { margin: 0 0 4px; color: var(--gold); }
+#resume-info { margin: 4px 0 12px; }
+.resume-actions { display: flex; gap: 10px; }
+.resume-actions button { flex: 1; }
+
 /* ===== Setup screen =====
    Section owns its own 100dvh viewport with header/footer pinned and
    the armies in an internal scroll container. Avoids relying on body

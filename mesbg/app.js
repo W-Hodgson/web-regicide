@@ -8,6 +8,8 @@ const ROOM_CODE_LEN = 5;
 const JOIN_TIMEOUT_MS = 10000;
 const LOG_MAX = 60;
 const SOLO_ID = 'solo';
+const STORAGE_KEY = 'mesbg-saved-game-v1';
+const STORAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const state = {
   screen: 'lobby',
@@ -54,6 +56,10 @@ const els = {
   gameLog: $('game-log'),
   gameLeaveBtn: $('game-leave-btn'),
   gameResetBtn: $('game-reset-btn'),
+  resumePanel: $('resume-panel'),
+  resumeInfo: $('resume-info'),
+  resumeBtn: $('resume-btn'),
+  resumeDiscardBtn: $('resume-discard-btn'),
 };
 
 function showScreen(name) {
@@ -92,6 +98,116 @@ function escapeHtml(s) {
   }[ch]));
 }
 
+// ===== Persistence =====
+
+function saveSnapshot() {
+  if (state.screen === 'lobby') return;
+  if (!state.view && !state.game) return;
+  const snap = {
+    v: 1,
+    roomCode: state.roomCode,
+    isHost: state.isHost,
+    isSolo: state.isSolo,
+    name: state.name,
+    game: (state.isHost || state.isSolo) ? state.game : null,
+    view: state.view,
+    log: state.log,
+    timestamp: Date.now(),
+  };
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snap)); } catch {}
+}
+
+function loadSavedSnapshot() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const snap = JSON.parse(raw);
+    if (!snap || snap.v !== 1) return null;
+    if (Date.now() - snap.timestamp > STORAGE_MAX_AGE_MS) {
+      try { localStorage.removeItem(STORAGE_KEY); } catch {}
+      return null;
+    }
+    return snap;
+  } catch {
+    return null;
+  }
+}
+
+function clearSavedSnapshot() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch {}
+}
+
+function formatAgo(timestamp) {
+  const mins = Math.max(1, Math.floor((Date.now() - timestamp) / 60000));
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  return hrs === 1 ? '1 hr ago' : `${hrs} hr ago`;
+}
+
+function refreshResumeUi() {
+  const snap = loadSavedSnapshot();
+  if (!snap) {
+    els.resumePanel.hidden = true;
+    return;
+  }
+  const where = snap.isSolo ? 'Solo session' : `Room ${snap.roomCode}`;
+  const role = snap.isSolo ? '' : (snap.isHost ? ' (host)' : ' (joiner)');
+  els.resumeInfo.textContent = `${where}${role} · last active ${formatAgo(snap.timestamp)}`;
+  els.resumePanel.hidden = false;
+}
+
+function resumeFromSnapshot() {
+  const snap = loadSavedSnapshot();
+  if (!snap) {
+    refreshResumeUi();
+    return;
+  }
+  state.name = snap.name || 'Anonymous';
+  state.log = snap.log || [];
+  els.nameInput.value = state.name;
+
+  if (snap.isSolo) {
+    state.isSolo = true;
+    state.isHost = false;
+    state.hostPeerId = null;
+    state.room = null;
+    state.send = {};
+    state.game = snap.game;
+    state.view = snap.view || snap.game;
+    state.rosters = { [SOLO_ID]: { id: SOLO_ID, name: state.name } };
+    state.heroDraft = { 0: {}, 1: {} };
+    els.setupRoomCode.textContent = '— solo —';
+    routeFromView();
+    saveSnapshot();
+    return;
+  }
+
+  if (snap.isHost) {
+    // Re-create room as host with the same code, then overlay the saved game.
+    // selfId changes on every Trystero session, so remap ownership ids.
+    setupRoom(snap.roomCode, true);
+    state.game = snap.game;
+    state.game.hostId = selfId;
+    state.game.armies[0].ownerId = selfId;
+    state.game.armies[1].ownerId = null;
+    state.game.armies[1].ready = false;
+    state.view = state.game;
+    saveSnapshot();
+    routeFromView();
+  } else {
+    // Joiner: rejoin existing room. Host's broadcast will replace our state.
+    setLobbyConnecting(true);
+    setStatus(`Reconnecting to room ${snap.roomCode}…`, 'lobby');
+    setupRoom(snap.roomCode, false);
+    state.joinTimeout = setTimeout(() => {
+      if (state.hostPeerId) return;
+      state.joinTimeout = null;
+      cleanupAndReturnToLobby({ clearSave: false });
+      setStatus(`Could not reconnect to room ${snap.roomCode}. The host may not be back yet.`, 'lobby');
+    }, JOIN_TIMEOUT_MS);
+  }
+}
+
 // ===== Networking =====
 
 function setupRoom(roomCode, asHost) {
@@ -113,7 +229,9 @@ function setupRoom(roomCode, asHost) {
   room.onPeerJoin(peerId => {
     if (state.isHost) {
       sendHost('1', peerId);
-      // Try to attach as the second army's owner.
+      // If slot 1 is held by a peer Trystero hasn't yet reported as disconnected
+      // (e.g. their tab refreshed and they're rejoining fast), free it up first.
+      pruneStaleSlot1();
       const result = engine.attachOwner(state.game, peerId);
       if (result.error) {
         sendErr(result.error, peerId);
@@ -128,8 +246,8 @@ function setupRoom(roomCode, asHost) {
   room.onPeerLeave(peerId => {
     delete state.rosters[peerId];
     if (peerId === state.hostPeerId) {
-      setStatus('The host left the room.', 'lobby');
-      cleanupAndReturnToLobby();
+      setStatus('The host left or refreshed. Tap Resume from the lobby once they\'re back.', 'lobby');
+      cleanupAndReturnToLobby({ clearSave: false });
       return;
     }
     if (state.isHost && state.game) {
@@ -175,6 +293,7 @@ function setupRoom(roomCode, asHost) {
     if (peerId !== state.hostPeerId) return;
     state.view = payload.view;
     state.log = payload.log || [];
+    saveSnapshot();
     routeFromView();
   });
 
@@ -216,6 +335,7 @@ function broadcastState() {
 
   state.view = state.game;
   routeFromView();
+  saveSnapshot();
 
   if (state.isSolo) return;
   for (const peerId of Object.keys(state.room.getPeers())) {
@@ -223,7 +343,10 @@ function broadcastState() {
   }
 }
 
-function cleanupAndReturnToLobby() {
+function cleanupAndReturnToLobby(options = {}) {
+  // Saves are preserved by default — only the explicit Discard button or
+  // a 24h expiry clears them. Callers can opt-in with { clearSave: true }.
+  const clearSave = options.clearSave === true;
   if (state.joinTimeout) {
     clearTimeout(state.joinTimeout);
     state.joinTimeout = null;
@@ -242,7 +365,19 @@ function cleanupAndReturnToLobby() {
   state.log = [];
   state.heroDraft = { 0: {}, 1: {} };
   setLobbyConnecting(false);
+  if (clearSave) clearSavedSnapshot();
   showScreen('lobby');
+  refreshResumeUi();
+}
+
+function pruneStaleSlot1() {
+  if (!state.isHost || !state.game || !state.room) return;
+  const oid = state.game.armies[1].ownerId;
+  if (!oid) return;
+  const connected = Object.keys(state.room.getPeers());
+  if (connected.includes(oid)) return;
+  const r = engine.detachOwner(state.game, oid);
+  if (!r.error) state.game = r.state;
 }
 
 // ===== Action dispatch =====
@@ -814,10 +949,18 @@ els.setupStartBtn.addEventListener('click', () => {
   dispatch({ type: 'startGame' });
 });
 
-els.setupLeaveBtn.addEventListener('click', cleanupAndReturnToLobby);
-els.gameLeaveBtn.addEventListener('click', cleanupAndReturnToLobby);
+els.setupLeaveBtn.addEventListener('click', () => cleanupAndReturnToLobby());
+els.gameLeaveBtn.addEventListener('click', () => cleanupAndReturnToLobby());
 els.gameResetBtn.addEventListener('click', () => {
   dispatch({ type: 'resetToSetup' });
+});
+
+els.resumeBtn.addEventListener('click', () => {
+  resumeFromSnapshot();
+});
+els.resumeDiscardBtn.addEventListener('click', () => {
+  clearSavedSnapshot();
+  refreshResumeUi();
 });
 
 document.addEventListener('keydown', e => {
@@ -829,3 +972,4 @@ document.addEventListener('keydown', e => {
 // Initial
 showScreen('lobby');
 updateJoinButton();
+refreshResumeUi();
