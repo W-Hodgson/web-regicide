@@ -451,8 +451,8 @@ function renderSetupArmy(army, armyIndex) {
         <input id="${nameId}" type="text" maxlength="32" value="${escapeHtml(army.armyName)}" placeholder="Rohan, Mordor, …">
       </label>
       <label class="field">
-        <span>Total models</span>
-        <input id="${modelsId}" type="number" min="0" max="999" value="${army.maxModels || ''}" placeholder="25">
+        <span>Total model count</span>
+        <input id="${modelsId}" type="number" min="0" max="999" value="${army.maxModels || ''}" placeholder="">
       </label>
     `;
     const nameInput = metaEl.querySelector(`#${nameId}`);
