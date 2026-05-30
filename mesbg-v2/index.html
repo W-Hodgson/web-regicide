@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f1419">
+<title>MESBG · Army Builder & Game Runner</title>
+<script>
+(function () {
+  try {
+    var saved = localStorage.getItem('regicide-theme');
+    var prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    var theme = saved || (prefersLight ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', theme);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = theme === 'light' ? '#DDD5D0' : '#0f1419';
+  } catch (e) {}
+})();
+</script>
+<link rel="stylesheet" href="../theme.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<button id="theme-toggle" type="button" aria-label="Toggle theme">☀</button>
+<div id="root">
+
+  <!-- ===== Home ===== -->
+  <section id="home" class="screen">
+    <h1 class="title">MESBG</h1>
+    <p class="subtitle muted">Army builder &amp; battle companion for the Middle-earth Strategy Battle Game (2024).</p>
+    <div class="home-cards">
+      <button class="home-card" id="go-armies">
+        <span class="home-card-title">⚔ Armies</span>
+        <span class="home-card-sub muted small">Browse, build and save army lists</span>
+      </button>
+      <button class="home-card" id="go-play">
+        <span class="home-card-title">🛡 Play a battle</span>
+        <span class="home-card-sub muted small">Pick lists and track the game live</span>
+      </button>
+    </div>
+    <p class="storage-note muted small" id="storage-note"></p>
+    <p class="footer muted small"><a href="../" class="back-link">← back to menu</a></p>
+  </section>
+
+  <!-- ===== Roster browser ===== -->
+  <section id="browse" class="screen" hidden>
+    <div class="bar">
+      <button class="bar-back" data-nav="home">←</button>
+      <h2>Armies</h2>
+      <button id="new-roster-btn" class="primary">+ New army</button>
+    </div>
+    <p class="muted small" id="browse-status">Loading…</p>
+    <div id="roster-list" class="roster-list"></div>
+  </section>
+
+  <!-- ===== Builder ===== -->
+  <section id="builder" class="screen" hidden>
+    <div class="bar">
+      <button class="bar-back" data-nav="browse">←</button>
+      <input id="roster-name" type="text" maxlength="40" placeholder="Army name" autocomplete="off">
+      <button id="save-roster-btn" class="primary">Save</button>
+    </div>
+
+    <div class="builder-faction" id="builder-faction"></div>
+
+    <div class="builder-summary" id="builder-summary"></div>
+    <div class="legality" id="legality"></div>
+
+    <div id="warbands"></div>
+    <button id="add-warband-btn" class="add-warband">+ Add warband</button>
+  </section>
+
+  <!-- ===== Game setup ===== -->
+  <section id="game-setup" class="screen" hidden>
+    <div class="bar">
+      <button class="bar-back" data-nav="home">←</button>
+      <h2>Set up battle</h2>
+    </div>
+    <div class="panel">
+      <label class="field"><span>Your name</span>
+        <input id="player-name" type="text" maxlength="16" placeholder="Captain" autocomplete="off"></label>
+      <div class="setup-modes">
+        <button id="mode-solo" class="primary">Track on this device</button>
+        <div class="or muted">— or play across two devices —</div>
+        <button id="mode-create">Create a room</button>
+        <div class="join-row">
+          <input id="join-code" type="text" placeholder="ROOM" maxlength="5" autocomplete="off" spellcheck="false">
+          <button id="join-btn">Join</button>
+        </div>
+      </div>
+      <p id="setup-status" class="muted small"></p>
+    </div>
+    <div id="roster-pick" class="panel" hidden>
+      <h3>Choose armies</h3>
+      <div id="roster-pick-body"></div>
+      <button id="start-battle-btn" class="primary" disabled>Start the battle</button>
+    </div>
+  </section>
+
+  <!-- ===== Game runner ===== -->
+  <section id="game" class="screen" hidden>
+    <div class="bar">
+      <span id="game-room-code" class="code"></span>
+      <h2 id="game-title">Battle</h2>
+      <button id="game-leave-btn">Leave</button>
+    </div>
+    <div id="game-armies"></div>
+    <div class="panel" id="game-log-panel">
+      <h3>Log</h3>
+      <ul id="game-log"></ul>
+    </div>
+  </section>
+
+</div>
+
+<!-- ===== Password / option dialogs ===== -->
+<dialog id="cake-dialog">
+  <form method="dialog" class="dialog-body">
+    <h3>Enter password</h3>
+    <p class="muted small">A password is needed to create or change shared army lists.</p>
+    <input id="cake-input" type="password" placeholder="Password" autocomplete="off">
+    <p id="cake-error" class="error-text small" hidden>Incorrect password.</p>
+    <div class="dialog-actions">
+      <button value="cancel">Cancel</button>
+      <button value="ok" class="primary" id="cake-ok">Unlock</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="unit-dialog"></dialog>
+
+<script src="../theme.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

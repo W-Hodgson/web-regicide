@@ -1,0 +1,6 @@
+{
+  "name": "mesbg-v2",
+  "private": true,
+  "type": "module",
+  "description": "MESBG v2 army builder + game runner. No build step; package.json only marks ES modules for node-based testing of the pure logic."
+}
