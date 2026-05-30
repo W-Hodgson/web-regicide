@@ -1,5 +1,8 @@
 // app.js — Trystero P2P + DOM rendering
-import { joinRoom, selfId } from 'https://esm.sh/@trystero-p2p/nostr'
+// Pinned to 0.21.0: the last version with the tuple makeAction API ([send, receive]).
+// 0.22+ (the @trystero-p2p scope) returns an action object instead, which breaks
+// the `const [send, get] = room.makeAction(...)` destructures below.
+import { joinRoom, selfId } from 'https://esm.sh/trystero@0.21.0/nostr'
 import * as engine from './engine.js'
 
 const APP_ID = 'regicide-clide-2026';
