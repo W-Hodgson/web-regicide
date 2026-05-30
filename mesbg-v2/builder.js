@@ -5,8 +5,9 @@
 // model count and full legality come from rules.validate(). Saving is gated by the
 // caller-supplied requireCake() (the "cake" password).
 
-import { el, $, clear } from './ui.js';
+import { el, $, clear, closeX, eyeIcon } from './ui.js';
 import { heroTierInFaction, factionEntries } from './data.js';
+import { openUnitRules, openArmyRules } from './rulesview.js';
 import {
   emptyRoster, makeWarband, makeRosterUnit, validate,
   unitBasePoints, rUnitPoints, rUnitModels,
@@ -136,6 +137,9 @@ function renderSummary() {
     el('.stat', {}, [el('b', {}, String(s.heroes)), el('span', { class: 'muted small' }, 'heroes')]),
     el('.stat', {}, [el('span', { class: 'muted small' }, `Broken at ${s.breakPoint} lost · Quartered at ${s.quarterPoint} left`)]),
   );
+  if (roster.faction) {
+    host.append(el('button', { class: 'army-rules-btn', title: 'Army rules & bonuses', onclick: () => openArmyRules(idx, roster.faction) }, [eyeIcon(), 'Army rules']));
+  }
 
   const leg = clear($('legality'));
   if (!roster.faction) {
@@ -209,6 +213,7 @@ function unitRow(runit, role, wi, fi) {
       el('button', { onclick: () => { runit.count += 1; render(); } }, '+'),
     ]));
   }
+  controls.push(el('button', { class: 'icon-btn', title: 'View rules', onclick: () => openUnitRules(idx, runit.name, runit.kind, runit.options) }, eyeIcon()));
   if (src && (src.options?.length || src.requiredChildren?.length)) {
     controls.push(el('button', { class: 'icon-btn', title: 'Options', onclick: () => editOptions(runit, src) }, '⚙'));
   }
@@ -291,7 +296,7 @@ function pickUnit(kind, wi) {
     search,
     list,
     el('.dialog-actions', {}, [el('button', { onclick: () => dlg.close() }, 'Cancel')]),
-  ]));
+  ]), closeX(dlg));
   renderList(pool);
   dlg.showModal();
   search.focus();
@@ -351,6 +356,21 @@ function editOptions(runit, src) {
     dropUnlocked(); body(); render();
   }
 
+  // Options that resolve to a defined gear item (Crown of Morgul, Morgul Blade…) are
+  // "special": mark them and offer an inline 👁 to read the rules. Generic options
+  // (Two-handed weapon, etc.) have no gear definition and stay plain.
+  const expanded = new Set();
+  function wrap(name, rowEl) {
+    const def = idx.getGear(name)?.definition;
+    if (!def) return rowEl;
+    rowEl.classList.add('special');
+    rowEl.append(el('button', {
+      class: 'opt-info', type: 'button', title: 'Rules',
+      onclick: () => { expanded.has(name) ? expanded.delete(name) : expanded.add(name); body(); },
+    }, eyeIcon(15)));
+    return expanded.has(name) ? el('.opt-wrap', {}, [rowEl, el('.opt-def.muted.small', {}, def)]) : rowEl;
+  }
+
   function radioRow(key, label, pts, checked, onpick) {
     return el('.opt-row', {}, [
       el('input', { type: 'radio', name: `grp-${key}`, checked, onchange: onpick }),
@@ -362,7 +382,7 @@ function editOptions(runit, src) {
     const chosen = group.opts.find((o) => isSelected(o.name))?.name || null;
     const rows = [];
     if (!group.required) rows.push(radioRow(key, 'None', '—', chosen === null, () => setChoice(group, null)));
-    for (const o of group.opts) rows.push(radioRow(key, o.name, o.points ? `+${o.points}` : '—', chosen === o.name, () => setChoice(group, o.name)));
+    for (const o of group.opts) rows.push(wrap(o.name, radioRow(key, o.name, o.points ? `+${o.points}` : '—', chosen === o.name, () => setChoice(group, o.name))));
     return el('.opt-group', {}, [
       el('.opt-group-label.muted.small', {}, group.required ? 'Choose one (required)' : 'Choose one (optional)'),
       ...rows,
@@ -370,6 +390,7 @@ function editOptions(runit, src) {
   }
 
   function body() {
+    const prevScroll = dlg.querySelector('.opt-list')?.scrollTop || 0; // survive the re-render
     const blocks = [];
     const emitted = new Set();
     for (const o of opts) {
@@ -380,18 +401,20 @@ function editOptions(runit, src) {
       }
       const locked = o.unlockedBy && !isSelected(o.unlockedBy);
       const required = runit.options.find((x) => x.name === o.name)?.required;
-      blocks.push(el(`.opt-row${locked ? '.disabled' : ''}`, {}, [
+      blocks.push(wrap(o.name, el(`.opt-row${locked ? '.disabled' : ''}`, {}, [
         el('input', { type: 'checkbox', checked: isSelected(o.name), disabled: locked || required, onchange: () => toggle(o) }),
         el('.opt-name', {}, o.name + (locked ? ` (needs ${o.unlockedBy})` : required ? ' (required)' : '')),
         el('.opt-pts', {}, o.points ? `+${o.points}` : '—'),
-      ]));
+      ])));
     }
     clear(dlg).append(el('.dialog-body', {}, [
       el('h3', {}, runit.name),
       el('.profile-line', {}, profileLine(runit.profile)),
       opts.length ? el('.opt-list', {}, blocks) : el('.muted.small', {}, 'No options.'),
       el('.dialog-actions', {}, [el('button', { class: 'primary', onclick: () => dlg.close() }, 'Done')]),
-    ]));
+    ]), closeX(dlg));
+    const list = dlg.querySelector('.opt-list');
+    if (list) list.scrollTop = prevScroll;
   }
 
   body();

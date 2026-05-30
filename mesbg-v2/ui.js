@@ -35,6 +35,18 @@ export function clear(node) {
   return node;
 }
 
+// A top-right "✕" close button for a <dialog>. Place inside a position:relative body.
+export function closeX(dlg) {
+  return el('button.dialog-close-x', { type: 'button', title: 'Close', 'aria-label': 'Close', onclick: () => dlg.close() }, '✕');
+}
+
+// Minimal vector eye icon (inherits text colour via currentColor).
+export function eyeIcon(size = 16) {
+  return el('span.eye-icon', {
+    html: `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  });
+}
+
 export function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
