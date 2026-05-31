@@ -10,7 +10,7 @@ import { heroTierInFaction, factionEntries } from './data.js';
 import { openUnitRules, openArmyRules } from './rulesview.js';
 import {
   emptyRoster, makeWarband, makeRosterUnit, validate,
-  unitBasePoints, rUnitPoints, rUnitModels,
+  unitBasePoints, rUnitPoints, rUnitModels, unitAvailable,
 } from './rules.js';
 
 let idx, ctx;
@@ -282,6 +282,13 @@ function pickUnit(kind, wi) {
     pool.sort((a, b) => idx.tier(a.tier).rank - idx.tier(b.tier).rank || a.unit.points - b.unit.points);
   } else {
     pool = warriors.map((w) => ({ unit: w, tier: null }));
+    // Add conditionally-available warriors (empty `factions`, gated by `availableIn`) that
+    // this warband currently unlocks — e.g. Khazad Guard under a Dwarf-King leader.
+    const have = new Set(pool.map((p) => p.unit.name));
+    for (const w of idx.warriors) {
+      if (have.has(w.name) || !(w.availableIn && w.availableIn.length)) continue;
+      if (unitAvailable(idx, roster, w, roster.warbands[wi])) pool.push({ unit: w, tier: null });
+    }
     pool.sort((a, b) => a.unit.name.localeCompare(b.unit.name));
   }
 

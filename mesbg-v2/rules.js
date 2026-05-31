@@ -268,9 +268,53 @@ export function validate(idx, roster) {
   //     chooseOneKey = at most one (optional, mutually exclusive).
   for (const wb of a.warbands) for (const e of wb.entries) errors.push(...chooseOneIssues(e));
 
+  // 11. Conditionally-available units (availableIn). Only flag conditional-only units (not
+  //     normal faction units) whose requirement isn't met in their warband — e.g. a Khazad
+  //     Guard whose Dwarf-King leader was removed.
+  const fu = idx.unitsForFaction(roster.faction);
+  const normalNames = new Set([...fu.heroes, ...fu.warriors].map((u) => u.name));
+  for (const wb of a.warbands) for (const e of wb.entries) {
+    const src = e.src;
+    if (src?.availableIn?.length && !normalNames.has(src.name) && !unitAvailable(idx, roster, src, wb)) {
+      errors.push(`${e.runit.name} needs a specific leader or hero in its warband/army to be fielded.`);
+    }
+  }
+
   const dedup = (arr) => [...new Set(arr)];
   const errs = dedup(errors);
   return { errors: errs, warnings: dedup(warnings), stats: a, legal: errs.length === 0 };
+}
+
+// Some units (e.g. Khazad Guard) have empty `factions` and an `availableIn` rule instead:
+// an OR-list of requirement groups. A group is `{ all: [conditions] }` (or a bare condition
+// / string). A condition `{ in: X, ifLeader? }` is met when X equals the army's faction, or
+// a unit named/keyworded X is in the army — or, with ifLeader, leads THIS warband.
+export function unitAvailable(idx, roster, unit, warband) {
+  const av = unit.availableIn;
+  if (!av || !av.length) return true; // not gated
+
+  const matchesToken = (runit, token) => {
+    if (!runit) return false;
+    if (runit.name === token) return true;
+    const src = (runit.kind === 'hero' ? idx.heroes : idx.warriors).find((u) => u.name === runit.name);
+    return !!src && ((src.keywords || []).includes(token) || (src.specialRules || []).includes(token) || (src.unitType || []).includes(token));
+  };
+  const armyUnits = [];
+  for (const wb of roster.warbands || []) {
+    if (wb.leader) armyUnits.push(wb.leader);
+    for (const f of wb.followers || []) armyUnits.push(f);
+  }
+  const condHolds = (c) => {
+    const token = typeof c === 'string' ? c : c.in;
+    if (token === roster.faction) return true;
+    if (typeof c === 'object' && c.ifLeader) return matchesToken(warband?.leader, token);
+    return armyUnits.some((u) => matchesToken(u, token));
+  };
+  return av.some((group) => {
+    if (typeof group === 'string') return condHolds(group);
+    const conds = Array.isArray(group.all) ? group.all : [group];
+    return conds.every(condHolds);
+  });
 }
 
 function chooseOneIssues(entry) {
