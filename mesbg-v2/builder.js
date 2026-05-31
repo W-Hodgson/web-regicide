@@ -5,7 +5,7 @@
 // model count and full legality come from rules.validate(). Saving is gated by the
 // caller-supplied requireCake() (the "cake" password).
 
-import { el, $, clear, closeX, eyeIcon } from './ui.js';
+import { el, $, clear, closeX, eyeIcon, copyIcon } from './ui.js';
 import { heroTierInFaction, factionEntries } from './data.js';
 import { openUnitRules, openArmyRules } from './rulesview.js';
 import {
@@ -151,6 +151,31 @@ function renderSummary() {
   if (v.legal && !v.warnings.length && s.models > 0) leg.append(el('.legal-line.ok', {}, '✓ This army is legal.'));
 }
 
+// A unit is unique (the Balrog, named characters…) if flagged so in the data — can't be duplicated.
+function isUnique(runit) {
+  const src = (runit.kind === 'hero' ? idx.heroes : idx.warriors).find((u) => u.name === runit.name);
+  return !!(src && (src.unique || (src.unitType || []).includes('Unique')));
+}
+
+let _copyN = 0;
+function cloneUnit(runit) {
+  const c = structuredClone(runit);
+  _copyN += 1;
+  c.id = `${runit.kind === 'hero' ? 'h' : 'w'}cp${_copyN}`;
+  return c;
+}
+
+// Duplicate a warband just below itself, dropping any unique units (which can't be repeated).
+function copyWarband(wi) {
+  const wb = roster.warbands[wi];
+  if (!wb.leader || isUnique(wb.leader)) return;
+  const copy = makeWarband();
+  copy.leader = cloneUnit(wb.leader);
+  copy.followers = wb.followers.filter((f) => !isUnique(f)).map(cloneUnit);
+  roster.warbands.splice(wi + 1, 0, copy);
+  render();
+}
+
 function renderWarbands() {
   const host = clear($('warbands'));
   const disabled = !roster.faction;
@@ -161,9 +186,16 @@ function renderWarbands() {
     const used = wb.followers.filter((f) => f.kind === 'warrior').reduce((s, f) => s + rUnitModels(f), 0);
     const full = !!wb.leader && used >= cap; // warband at (or over) its leader's warrior capacity
 
+    const leaderUnique = !!wb.leader && isUnique(wb.leader);
     const head = el('.warband-head', {}, [
       el('.wb-title', {}, `Warband ${wi + 1}`),
       el('span', { class: 'wb-cap' + (used > cap ? ' over' : '') }, wb.leader ? `${used}/${cap} warriors` : 'no leader'),
+      el('button', {
+        class: 'icon-btn',
+        disabled: !wb.leader || leaderUnique,
+        title: !wb.leader ? 'Add a leader first' : leaderUnique ? `Can’t copy — ${wb.leader.name} is unique` : 'Copy warband (excludes unique units)',
+        onclick: () => copyWarband(wi),
+      }, copyIcon()),
       el('button', { class: 'icon-btn', title: 'Remove warband', onclick: () => { roster.warbands.splice(wi, 1); render(); } }, '✕'),
     ]);
 

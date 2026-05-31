@@ -58,8 +58,15 @@ html, body {
   min-height: 100vh;
   min-height: 100dvh;
   max-width: 100%;
-  overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Clip horizontal overflow + contain overscroll on the ROOT scroller only. Putting these
+   on <body> as well turned it into a second, content-sized scroll container whose
+   `overscroll-behavior: contain` swallowed wheel/trackpad scrolling (scrollbar drag still
+   worked). Confining them to <html> keeps wheel scrolling working normally. */
+html {
+  overflow-x: hidden;
   overscroll-behavior: contain;
 }
 
