@@ -357,5 +357,5 @@ function fmtEvent(e) {
 
 function leave() {
   resetState();
-  ctx.nav('home');
+  if (ctx.exit) ctx.exit(); else ctx.nav('home');
 }

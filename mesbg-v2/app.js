@@ -15,6 +15,45 @@ function nav(screen) {
   window.scrollTo(0, 0);
 }
 
+// ── Hash routing ────────────────────────────────────────────────────────────
+// Screens are reflected in the URL hash so a refresh restores the page:
+//   #            → home
+//   #armies      → roster browser
+//   #build       → new army        #build/<id> → edit that army
+//   #play        → battle setup (the live game itself isn't deep-linked)
+function go(path) {
+  const target = `#${path}`;
+  if (location.hash === target) applyRoute();   // same hash won't fire hashchange
+  else location.hash = target;                  // hashchange → applyRoute()
+}
+
+async function applyRoute() {
+  if (!idx) return; // not booted yet
+  const [seg, arg] = location.hash.replace(/^#\/?/, '').split('/');
+  switch (seg) {
+    case '':
+    case 'home':
+      nav('home');
+      break;
+    case 'armies':
+      await renderBrowse();
+      break;
+    case 'build':
+      if (!arg || arg === 'new') { openBuilder(null); nav('builder'); }
+      else {
+        const r = await getRoster(arg);
+        if (r) { openBuilder(r); nav('builder'); }
+        else go('armies'); // unknown id
+      }
+      break;
+    case 'play':
+      openPlay();
+      break;
+    default:
+      nav('home');
+  }
+}
+
 // ── "cake" password gate ───────────────────────────────────────────────────────
 let cakeUnlocked = false;
 function requireCake() {
@@ -61,7 +100,7 @@ async function renderBrowse() {
     return;
   }
   for (const r of rosters) {
-    list.append(el('.panel.roster-card', { role: 'button', title: 'Edit this army', onclick: () => editRoster(r.id) }, [
+    list.append(el('.panel.roster-card', { role: 'button', title: 'Edit this army', onclick: () => go(`build/${r.id}`) }, [
       el('.panel-grow', {}, [
         el('h3', {}, r.name || 'Untitled army'),
         el('.roster-meta.muted.small', {}, [
@@ -71,18 +110,11 @@ async function renderBrowse() {
         ]),
       ]),
       el('.actions', {}, [
-        el('button', { title: 'Use in a battle', onclick: (e) => { e.stopPropagation(); openPlay(); } }, '▶'),
+        el('button', { title: 'Use in a battle', onclick: (e) => { e.stopPropagation(); go('play'); } }, '▶'),
         el('button', { title: 'Delete', onclick: (e) => { e.stopPropagation(); removeRoster(r); } }, '✕'),
       ]),
     ]));
   }
-}
-
-async function editRoster(id) {
-  const r = await getRoster(id);
-  if (!r) return;
-  openBuilder(r);
-  nav('builder');
 }
 
 async function removeRoster(r) {
@@ -106,28 +138,25 @@ async function boot() {
 
   initBuilder(idx, {
     requireCake,
-    onSaved: (roster) => saveRoster(roster),
-    goBack: () => renderBrowse(),
+    onSaved: async (roster) => {
+      const id = await saveRoster(roster);
+      history.replaceState(null, '', `#build/${id}`); // keep editing this army on refresh
+      return id;
+    },
+    goBack: () => go('armies'),
   });
-  initRunner(idx, { nav, listRosters, getRoster });
+  initRunner(idx, { nav, listRosters, getRoster, exit: () => go('') });
 
-  $('go-armies').addEventListener('click', renderBrowse);
-  $('go-play').addEventListener('click', () => openPlay());
-  $('new-roster-btn').addEventListener('click', async () => {
-    const ok = await requireCake();
-    if (!ok) return;
-    openBuilder(null);
-    nav('builder');
-  });
+  $('go-armies').addEventListener('click', () => go('armies'));
+  $('go-play').addEventListener('click', () => go('play'));
+  // Creating/editing is free; the "cake" gate lives on save + delete (the shared-data writes).
+  $('new-roster-btn').addEventListener('click', () => go('build/new'));
   document.querySelectorAll('[data-nav]').forEach((b) =>
-    b.addEventListener('click', () => {
-      const target = b.dataset.nav;
-      if (target === 'browse') renderBrowse();
-      else nav(target);
-    }),
+    b.addEventListener('click', () => go(b.dataset.nav === 'browse' ? 'armies' : '')),
   );
 
-  nav('home');
+  window.addEventListener('hashchange', applyRoute);
+  applyRoute(); // honour the current URL on load (e.g. a refresh on #armies)
 }
 
 boot();
