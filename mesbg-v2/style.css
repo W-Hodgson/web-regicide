@@ -51,7 +51,7 @@
 /* ── Builder ── */
 .builder-faction { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
 .align-toggle { display: inline-flex; border: 1px solid var(--border-2); border-radius: 8px; overflow: hidden; }
-.align-toggle button { border: none; border-radius: 0; margin: 0; }
+.align-toggle button { border: none; border-radius: 0; margin: 0; min-width: 72px; text-align: center; }
 .align-toggle button.active { background: var(--gold); color: var(--primary-fg); }
 select {
   background: var(--panel-2); color: var(--text); border: 1px solid var(--border-2);
@@ -124,7 +124,7 @@ dialog::backdrop { background: var(--backdrop); }
 .error-text { color: var(--red); }
 #cake-input, .dialog-body input[type="text"] { width: 100%; }
 
-.picker-list { max-height: 50vh; overflow-y: auto; display: grid; gap: 5px; }
+.picker-list { max-height: 50vh; overflow-y: auto; display: grid; gap: 5px; margin-top: 6px; }
 .picker-item { display: flex; align-items: center; gap: 8px; padding: 9px 11px; cursor: pointer; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; text-align: left; }
 .picker-item:hover { border-color: var(--gold); }
 .picker-item .pi-name { flex: 1; }

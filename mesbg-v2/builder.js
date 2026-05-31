@@ -159,6 +159,7 @@ function renderWarbands() {
   roster.warbands.forEach((wb, wi) => {
     const cap = wb.leader ? idx.tier(wb.leader.heroicTier).maxWarriors : 0;
     const used = wb.followers.filter((f) => f.kind === 'warrior').reduce((s, f) => s + rUnitModels(f), 0);
+    const full = !!wb.leader && used >= cap; // warband at (or over) its leader's warrior capacity
 
     const head = el('.warband-head', {}, [
       el('.wb-title', {}, `Warband ${wi + 1}`),
@@ -176,10 +177,14 @@ function renderWarbands() {
     ]));
 
     // Followers
-    wb.followers.forEach((f, fi) => body.append(unitRow(f, 'follower', wi, fi)));
+    wb.followers.forEach((f, fi) => body.append(unitRow(f, 'follower', wi, fi, full)));
 
     body.append(el('.add-row', {}, [
-      el('button', { disabled: disabled || !wb.leader, onclick: () => pickUnit('warrior', wi) }, '+ Warriors'),
+      el('button', {
+        disabled: disabled || !wb.leader || full,
+        title: full ? 'Warband at capacity' : null,
+        onclick: () => pickUnit('warrior', wi),
+      }, '+ Warriors'),
       el('button', { disabled: disabled || !wb.leader, onclick: () => pickUnit('attach-hero', wi) }, '+ Attach hero'),
     ]));
 
@@ -187,7 +192,7 @@ function renderWarbands() {
   });
 }
 
-function unitRow(runit, role, wi, fi) {
+function unitRow(runit, role, wi, fi, warbandFull = false) {
   const src = (runit.kind === 'hero' ? idx.heroes : idx.warriors).find((u) => u.name === runit.name);
   const pts = rUnitPoints(runit, unitBasePoints(src || {}));
   const optSummary = runit.options.length ? runit.options.map((o) => o.name).join(', ') : null;
@@ -210,7 +215,7 @@ function unitRow(runit, role, wi, fi) {
     controls.push(el('.qty', {}, [
       el('button', { onclick: () => { runit.count = Math.max(1, runit.count - 1); render(); } }, '−'),
       el('span', { class: 'n' }, String(runit.count)),
-      el('button', { onclick: () => { runit.count += 1; render(); } }, '+'),
+      el('button', { disabled: warbandFull, title: warbandFull ? 'Warband at capacity' : null, onclick: () => { runit.count += 1; render(); } }, '+'),
     ]));
   }
   controls.push(el('button', { class: 'icon-btn', title: 'View rules', onclick: () => openUnitRules(idx, runit.name, runit.kind, runit.options) }, eyeIcon()));
@@ -250,10 +255,6 @@ function pickUnit(kind, wi) {
 
   const dlg = $('unit-dialog');
   const list = el('.picker-list');
-  const search = el('input', {
-    type: 'text', class: 'picker-search', placeholder: 'Search…',
-    oninput: (e) => filter(e.target.value),
-  });
 
   function renderList(items) {
     clear(list);
@@ -267,11 +268,7 @@ function pickUnit(kind, wi) {
         el('span', { class: 'pi-pts' }, `${p.unit.points}`),
       ]));
     }
-    if (!items.length) list.append(el('.empty-note.muted', {}, 'No matches.'));
-  }
-  function filter(q) {
-    const t = q.trim().toLowerCase();
-    renderList(t ? pool.filter((p) => p.unit.name.toLowerCase().includes(t)) : pool);
+    if (!items.length) list.append(el('.empty-note.muted', {}, 'No units available.'));
   }
 
   function add(p) {
@@ -293,13 +290,11 @@ function pickUnit(kind, wi) {
 
   clear(dlg).append(el('.dialog-body', {}, [
     el('h3', {}, kind === 'warrior' ? 'Add warriors' : kind === 'attach-hero' ? 'Attach a hero' : 'Choose warband leader'),
-    search,
     list,
     el('.dialog-actions', {}, [el('button', { onclick: () => dlg.close() }, 'Cancel')]),
   ]), closeX(dlg));
   renderList(pool);
   dlg.showModal();
-  search.focus();
 }
 
 // Force-include any requiredChildren that are simple options (mandatory gear), but only
