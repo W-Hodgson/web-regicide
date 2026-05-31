@@ -42,7 +42,9 @@ export const usingFirestore = configLooksReal(FIREBASE_CONFIG);
 // ── Firestore backend (lazy-loaded) ──────────────────────────────────────────
 
 let _fs = null;
-async function firestore() {
+// Lazy Firestore handle, shared by the roster store and the multiplayer room layer (room.js).
+// Returns { db, ...firestoreSdk } so callers can destructure the functions they need.
+export async function firestore() {
   if (_fs) return _fs;
   const base = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
   const { initializeApp } = await import(`${base}/firebase-app.js`);
