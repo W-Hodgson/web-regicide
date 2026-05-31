@@ -161,6 +161,16 @@ dialog::backdrop { background: var(--backdrop); }
 .rs-meta { color: var(--text-dim); font-weight: 400; font-size: 11px; margin-left: 8px; }
 .rs-def-text { white-space: pre-wrap; line-height: 1.45; }
 .rs-list { margin: 0; padding-left: 18px; display: grid; gap: 6px; line-height: 1.45; }
+/* Inline rule references inside prose */
+.rule-ref {
+  display: inline; padding: 0; margin: 0; border: none; background: none; min-height: 0;
+  font: inherit; color: var(--gold); cursor: pointer; text-decoration: underline dotted;
+}
+.rule-ref:hover, .rule-ref.open { text-decoration: underline; background: none; border: none; }
+.ref-def {
+  margin-top: 6px; padding: 8px 10px; border-left: 3px solid var(--gold);
+  background: var(--panel-2); border-radius: 0 6px 6px 0; white-space: pre-wrap; line-height: 1.45;
+}
 
 /* ── Game setup ── */
 .setup-modes { display: grid; gap: 10px; margin: 8px 0; }

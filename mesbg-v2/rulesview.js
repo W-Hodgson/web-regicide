@@ -7,6 +7,55 @@ import { el, $, clear, closeX } from './ui.js';
 
 const lc = (s) => String(s || '').toLowerCase();
 
+// ── Inline rule references ────────────────────────────────────────────────────
+// Detect defined special-rule (keyword) names inside prose and turn them into tappable
+// links that expand the definition in place. Case-sensitive + word-bounded, longest-first,
+// and we skip very short names to avoid matching common words.
+
+let _matcher = null;
+function ruleMatcher(idx) {
+  if (_matcher && _matcher.idx === idx) return _matcher;
+  const names = [...idx.keywordByName.values()].map((k) => k.name).filter((n) => n && n.length >= 4);
+  names.sort((a, b) => b.length - a.length); // longest-first so "Blades of the Dead" beats "Dead"
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`(?<![\\w'])(${names.map(esc).join('|')})(?![\\w'])`, 'g');
+  _matcher = { idx, re };
+  return _matcher;
+}
+
+function refLink(idx, name) {
+  const def = idx.keywordByName.get(lc(name))?.definition;
+  let block = null;
+  const btn = el('button.rule-ref', {
+    type: 'button', title: 'Show rule',
+    onclick: () => {
+      if (block) { block.remove(); block = null; btn.classList.remove('open'); return; }
+      const host = btn.closest('.rs-def') || btn.closest('li') || btn.parentElement;
+      block = el('.ref-def.muted.small', {}, def || 'No definition available.');
+      host.appendChild(block);
+      btn.classList.add('open');
+    },
+  }, name);
+  return btn;
+}
+
+// Returns an array of text fragments + ref-link buttons for a prose string.
+function linkifyRules(idx, text) {
+  const { re } = ruleMatcher(idx);
+  re.lastIndex = 0;
+  const nodes = [];
+  let last = 0;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    nodes.push(refLink(idx, m[0]));
+    last = m.index + m[0].length;
+    if (re.lastIndex === m.index) re.lastIndex++;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes.length ? nodes : [text];
+}
+
 export function openUnitRules(idx, unitName, kind, options = []) {
   const src = (kind === 'hero' ? idx.heroes : idx.warriors).find((u) => u.name === unitName)
     || idx.heroes.find((u) => u.name === unitName) || idx.warriors.find((u) => u.name === unitName);
@@ -89,8 +138,14 @@ function unitRulesView(idx, src, kind, options = []) {
 }
 
 function armyRulesView(idx, f) {
-  const bonuses = (f.armyBonuses || []).map((nm) => defEntry(nm, idx.armyBonusByName.get(lc(nm))?.definition));
-  const additional = (f.additionalRules || []).map((r) => el('li', {}, r));
+  const bonuses = (f.armyBonuses || []).map((nm) => {
+    const def = idx.armyBonusByName.get(lc(nm))?.definition;
+    return el('.rs-def', {}, [
+      el('.rs-def-name', {}, nm),
+      def ? el('.rs-def-text.muted.small', {}, linkifyRules(idx, def)) : null,
+    ]);
+  });
+  const additional = (f.additionalRules || []).map((r) => el('li', {}, linkifyRules(idx, r)));
   return el('.rules-body', {}, [
     el('h3', {}, f.name),
     el('.rs-type.muted.small', {}, `${f.alignment || ''} army`),
