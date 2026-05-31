@@ -20,12 +20,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const FIREBASE_CONFIG = {
-  apiKey: 'TODO_PASTE_API_KEY',
-  authDomain: 'TODO.firebaseapp.com',
-  projectId: 'TODO_PROJECT_ID',
-  storageBucket: 'TODO.appspot.com',
-  messagingSenderId: 'TODO',
-  appId: 'TODO',
+  apiKey: 'AIzaSyC2cnbXZLVPeenP9VK7xx_3ye58mNeghLU',
+  authDomain: 'mesbg-de8ce.firebaseapp.com',
+  projectId: 'mesbg-de8ce',
+  storageBucket: 'mesbg-de8ce.firebasestorage.app',
+  messagingSenderId: '710856051629',
+  appId: '1:710856051629:web:3f976e10b87dee8ba1ef24',
 };
 
 // Pinned Firebase SDK version (learn from the Trystero bug — never float a CDN dependency).
