@@ -92,18 +92,24 @@ function section(title, items) {
   return el('.rs-section', {}, [el('h4', {}, title), el('.rs-defs', {}, real)]);
 }
 
-function statBlock(src, isHero) {
-  const n = (k) => Number(src[k]) || 0;
+// `mods` is a stat→delta map summed from the selected options' gear modifiesStats.
+// Effective values (base + delta) are shown as the main line; changed stats are highlighted.
+function statBlock(src, isHero, mods = {}) {
+  const eff = (k) => (Number(src[k]) || 0) + (mods[k] || 0);
   const cells = [
-    ['Mv', `${n('movement')}"`], ['F', n('fight')], ['Sh', n('shoot') ? `${n('shoot')}+` : '—'],
-    ['S', n('strength')], ['D', n('defence')], ['A', n('attack')], ['W', n('wounds')], ['C', n('courage')],
+    ['Mv', 'movement', `${eff('movement')}"`], ['F', 'fight', eff('fight')], ['Sh', 'shoot', eff('shoot') ? `${eff('shoot')}+` : '—'],
+    ['S', 'strength', eff('strength')], ['D', 'defence', eff('defence')], ['A', 'attack', eff('attack')],
+    ['W', 'wounds', eff('wounds')], ['C', 'courage', eff('courage')],
   ];
-  if (n('intelligence')) cells.push(['I', n('intelligence')]);
-  const grid = el('.rs-stats', {}, cells.map(([l, v]) =>
-    el('.rs-stat', {}, [el('.rs-stat-l', {}, l), el('.rs-stat-v', {}, String(v))])));
+  if (Number(src.intelligence) || 0) cells.push(['I', 'intelligence', eff('intelligence')]);
+  const grid = el('.rs-stats', {}, cells.map(([l, k, v]) =>
+    el(`.rs-stat${mods[k] ? '.modified' : ''}`, {}, [el('.rs-stat-l', {}, l), el('.rs-stat-v', {}, String(v))])));
   const parts = [grid];
-  if (isHero) parts.push(el('.rs-heroic.small', {}, `Might ${n('might')} · Will ${n('will')} · Fate ${n('fate')}`));
-  parts.push(el('.rs-pts.muted.small', {}, `${n('points')} pts`));
+  if (isHero) {
+    const hStat = (label, k) => `${label} ${eff(k)}`;
+    parts.push(el('.rs-heroic.small', {}, `${hStat('Might', 'might')} · ${hStat('Will', 'will')} · ${hStat('Fate', 'fate')}`));
+  }
+  parts.push(el('.rs-pts.muted.small', {}, `${Number(src.points) || 0} pts`));
   return el('.rs-profile', {}, parts);
 }
 
@@ -111,6 +117,13 @@ function statBlock(src, isHero) {
 
 function unitRulesView(idx, src, kind, options = []) {
   const isHero = kind === 'hero' || (src.unitType || []).includes('Hero');
+  // Sum stat modifiers from the selected options' gear (e.g. Shield → +1 Defence).
+  const mods = {};
+  for (const o of options) {
+    for (const m of idx.getGear(o.name)?.modifiesStats || []) {
+      mods[m.stat] = (mods[m.stat] || 0) + (Number(m.modifier) || 0);
+    }
+  }
   const wargear = (src.wargear || []).map((nm) => defEntry(nm, idx.getGear(nm)?.definition));
   // Selected options/upgrades — special items (Crown of Morgul, Morgul Blade…) carry a gear
   // definition; generic ones (Two-handed weapon) just show their name and points.
@@ -127,7 +140,7 @@ function unitRulesView(idx, src, kind, options = []) {
   return el('.rules-body', {}, [
     el('h3', {}, src.name),
     el('.rs-type.muted.small', {}, (src.unitType || []).join(' · ')),
-    statBlock(src, isHero),
+    statBlock(src, isHero, mods),
     section('Wargear', wargear),
     section('Upgrades', upgrades),
     section('Special Rules', special),

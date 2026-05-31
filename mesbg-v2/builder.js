@@ -404,7 +404,7 @@ function editOptions(runit, src) {
     }
     clear(dlg).append(el('.dialog-body', {}, [
       el('h3', {}, runit.name),
-      el('.profile-line', {}, profileLine(runit.profile)),
+      el('.profile-line', {}, profileNodes(runit.profile, statMods(runit.options))),
       opts.length ? el('.opt-list', {}, blocks) : el('.muted.small', {}, 'No options.'),
       el('.dialog-actions', {}, [el('button', { class: 'primary', onclick: () => dlg.close() }, 'Done')]),
     ]), closeX(dlg));
@@ -416,10 +416,32 @@ function editOptions(runit, src) {
   dlg.showModal();
 }
 
-function profileLine(p) {
-  if (!p) return '';
-  const f = (k) => p[k] ?? 0;
-  return `M${f('movement')}" F${f('fight')}/${f('shoot')}+ S${f('strength')} D${f('defence')} A${f('attack')} W${f('wounds')} C${f('courage')} | Mt${f('might')} Wi${f('will')} Ft${f('fate')}`;
+// Sum stat modifiers from selected options' gear (Shield → +1 Defence, etc.).
+function statMods(options) {
+  const mods = {};
+  for (const o of options || []) {
+    for (const m of idx.getGear(o.name)?.modifiesStats || []) mods[m.stat] = (mods[m.stat] || 0) + (Number(m.modifier) || 0);
+  }
+  return mods;
+}
+
+// Compact profile line with the option modifiers applied; changed stats are gold.
+function profileNodes(p, mods = {}) {
+  if (!p) return [''];
+  const eff = (k) => (Number(p[k]) || 0) + (mods[k] || 0);
+  const tok = (text, modified) => el(`span${modified ? '.pl-mod' : ''}`, {}, text);
+  return [
+    tok(`M${eff('movement')}"`, mods.movement), ' ',
+    tok(`F${eff('fight')}/${eff('shoot')}+`, mods.fight || mods.shoot), ' ',
+    tok(`S${eff('strength')}`, mods.strength), ' ',
+    tok(`D${eff('defence')}`, mods.defence), ' ',
+    tok(`A${eff('attack')}`, mods.attack), ' ',
+    tok(`W${eff('wounds')}`, mods.wounds), ' ',
+    tok(`C${eff('courage')}`, mods.courage), ' | ',
+    tok(`Mt${eff('might')}`, mods.might), ' ',
+    tok(`Wi${eff('will')}`, mods.will), ' ',
+    tok(`Ft${eff('fate')}`, mods.fate),
+  ];
 }
 
 // ── Save ───────────────────────────────────────────────────────────────────
