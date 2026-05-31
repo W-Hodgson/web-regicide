@@ -17,6 +17,8 @@ function flattenEntries(roster) {
 export function armyFromRoster(roster, side) {
   const entries = flattenEntries(roster);
   const heroes = [];
+  const types = []; // distinct hero/warrior types, for the in-game rules reference
+  const seenType = new Set();
   let maxModels = 0;
 
   for (const e of entries) {
@@ -35,6 +37,11 @@ export function armyFromRoster(roster, side) {
         dead: false,
       });
     }
+    const key = `${e.kind}:${e.name}`;
+    if (!seenType.has(key)) {
+      seenType.add(key);
+      types.push({ name: e.name, kind: e.kind, options: (e.options || []).map((o) => ({ name: o.name, points: o.points })) });
+    }
   }
 
   return {
@@ -46,6 +53,7 @@ export function armyFromRoster(roster, side) {
     maxModels,
     models: maxModels, // single tracked model count (warriors + heroes); +/- as casualties occur
     heroes,
+    types,
   };
 }
 

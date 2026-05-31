@@ -191,7 +191,14 @@ dialog::backdrop { background: var(--backdrop); }
 .army-panel.broken { border-color: var(--state-broken); }
 .army-panel.quartered { border-color: var(--state-quartered); }
 .army-head { padding: 10px 14px; background: var(--panel-2); border-bottom: 1px solid var(--border); }
-.army-head .army-name { font-weight: 700; font-size: 16px; }
+.army-head .army-name-row { display: flex; align-items: center; gap: 8px; }
+.army-head .army-name { font-weight: 700; font-size: 16px; flex: 1; min-width: 0; }
+.army-rules-eye { width: 32px; min-height: 0; height: 32px; padding: 0; }
+.unit-ref { padding: 8px 14px 12px; border-top: 1px solid var(--border); }
+.unit-ref-label { display: block; margin-bottom: 6px; letter-spacing: 0.5px; }
+.ref-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ref-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 0; padding: 5px 10px; font-size: 12.5px; border-radius: 14px; }
+.ref-chip .eye-icon { color: var(--gold); }
 .army-head .army-state { font-size: 12px; }
 .army-head .army-state.broken { color: var(--state-broken); }
 .army-head .army-state.quartered { color: var(--state-quartered); }

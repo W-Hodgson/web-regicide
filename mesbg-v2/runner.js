@@ -9,7 +9,8 @@
 // Roster data comes from the store via the injected ctx (listRosters/getRoster).
 
 import { joinRoom, selfId } from 'https://esm.sh/trystero@0.21.0/nostr';
-import { el, $, clear } from './ui.js';
+import { el, $, clear, eyeIcon } from './ui.js';
+import { openUnitRules, openArmyRules } from './rulesview.js';
 import * as G from './gengine.js';
 
 const APP_ID = 'mesbg-v2-2026';
@@ -304,7 +305,10 @@ function armyPanel(army, armyIdx) {
   const stateLabel = quartered ? 'Quartered!' : broken ? 'Broken' : 'Steady';
 
   const head = el('.army-head', {}, [
-    el('.army-name', {}, `${army.name}${editable ? '' : ' 🔒'}`),
+    el('.army-name-row', {}, [
+      el('.army-name', {}, `${army.name}${editable ? '' : ' 🔒'}`),
+      army.faction ? el('button.icon-btn.army-rules-eye', { title: 'Army rules & bonuses', onclick: () => openArmyRules(idx, army.faction) }, eyeIcon()) : null,
+    ]),
     el('.muted.small', {}, `${army.faction} · ${army.alignment}`),
     el(`.army-state${quartered ? '.quartered' : broken ? '.broken' : ''}`, {},
       `${stateLabel} — ${cur}/${army.maxModels} models (break at ${Math.ceil(army.maxModels / 2)})`),
@@ -321,7 +325,18 @@ function armyPanel(army, armyIdx) {
   for (const h of army.heroes) heroHost.append(heroCard(army, armyIdx, h, editable));
 
   const sev = quartered ? '.quartered' : broken ? '.broken' : '';
-  return el(`.army-panel${sev}`, {}, [head, track, heroHost]);
+  return el(`.army-panel${sev}`, {}, [head, track, heroHost, unitReference(army)]);
+}
+
+// Quick in-game rules reference: one tappable row per distinct hero/warrior type.
+function unitReference(army) {
+  if (!army.types?.length) return null;
+  const rows = army.types.map((t) =>
+    el('button.ref-chip', {
+      type: 'button', title: 'View stats & rules',
+      onclick: () => openUnitRules(idx, t.name, t.kind, t.options || []),
+    }, [eyeIcon(14), el('span', {}, t.name)]));
+  return el('.unit-ref', {}, [el('.unit-ref-label.muted.small', {}, 'Reference'), el('.ref-chips', {}, rows)]);
 }
 
 function heroCard(army, armyIdx, h, editable) {
