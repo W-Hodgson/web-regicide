@@ -10,7 +10,7 @@
 //
 // Roster data comes from the store via the injected ctx (listRosters/getRoster).
 
-import { el, $, clear, eyeIcon } from './ui.js';
+import { el, $, clear, eyeIcon, closeX } from './ui.js';
 import { openUnitRules, openArmyRules } from './rulesview.js';
 import * as cloud from './room.js';
 import * as G from './gengine.js';
@@ -29,6 +29,41 @@ const STATS = [
   { key: 'will', label: 'Wi', glyph: '✦' },
   { key: 'fate', label: 'F', glyph: '★' },
 ];
+
+// To Wound chart — rows = attacker Strength (1–10), columns = defender Defence (1–10).
+// Cell = dice roll needed; '-' = cannot wound; '6/4' style = roll 6 then the second number.
+const TO_WOUND = [
+  ['4+', '5+', '5+', '6+', '6+', '6/4', '6/5', '6/6', '-', '-'],
+  ['4+', '4+', '5+', '5+', '6+', '6+', '6/4', '6/5', '6/6', '-'],
+  ['3+', '4+', '4+', '5+', '5+', '6+', '6+', '6/4', '6/5', '6/6'],
+  ['3+', '3+', '4+', '4+', '5+', '5+', '6+', '6+', '6/4', '6/5'],
+  ['3+', '3+', '3+', '4+', '4+', '5+', '5+', '6+', '6+', '6/4'],
+  ['3+', '3+', '3+', '3+', '4+', '4+', '5+', '5+', '6+', '6+'],
+  ['3+', '3+', '3+', '3+', '3+', '4+', '4+', '5+', '5+', '6+'],
+  ['3+', '3+', '3+', '3+', '3+', '3+', '4+', '4+', '5+', '5+'],
+  ['3+', '3+', '3+', '3+', '3+', '3+', '3+', '4+', '4+', '5+'],
+  ['3+', '3+', '3+', '3+', '3+', '3+', '3+', '3+', '4+', '4+'],
+];
+
+function openToWound() {
+  const dlg = $('rules-dialog');
+  const cells = [el('.tw-corner', {}, 'S\\D')];
+  for (let d = 1; d <= 10; d++) cells.push(el('.tw-head', {}, String(d)));
+  TO_WOUND.forEach((row, si) => {
+    cells.push(el('.tw-head', {}, String(si + 1)));
+    for (const v of row) {
+      const cls = v === '-' ? '.tw-none' : v.includes('/') ? '.tw-split' : '';
+      cells.push(el(`.tw-cell${cls}`, {}, v));
+    }
+  });
+  clear(dlg).append(el('.rules-body', {}, [
+    el('h3', {}, 'To Wound'),
+    el('.rs-type.muted.small', {}, 'Attacker Strength (rows) vs defender Defence (columns) — roll needed to wound.'),
+    el('.tw-grid', {}, cells),
+    el('.muted.small', {}, '“6/4” = roll a 6, then a 4+ to wound. “–” = cannot wound.'),
+  ]), closeX(dlg));
+  dlg.showModal();
+}
 
 let idx, ctx;
 const S = {
@@ -57,6 +92,7 @@ export function initRunner(dataIndex, context) {
   });
   $('player-name').addEventListener('input', (e) => { S.name = e.target.value.trim() || 'Captain'; });
   $('start-battle-btn').addEventListener('click', onStart);
+  $('to-wound-btn').addEventListener('click', openToWound);
   $('game-leave-btn').addEventListener('click', leave);
   // Connection toggle for hosting: Cloud (reliable) vs Direct/P2P (lower latency).
   $('transport-toggle').querySelectorAll('button').forEach((b) =>

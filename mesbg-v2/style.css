@@ -164,6 +164,18 @@ dialog::backdrop { background: var(--backdrop); }
 .rs-meta { color: var(--text-dim); font-weight: 400; font-size: 11px; margin-left: 8px; }
 .rs-def-text { white-space: pre-wrap; line-height: 1.45; }
 .rs-list { margin: 0; padding-left: 18px; display: grid; gap: 6px; line-height: 1.45; }
+
+/* To Wound chart grid */
+.tw-grid { display: grid; grid-template-columns: repeat(11, 1fr); gap: 3px; margin: 6px 0; }
+.tw-grid > div {
+  display: flex; align-items: center; justify-content: center; aspect-ratio: 1;
+  border-radius: 5px; font-size: 12px; font-weight: 600;
+  background: var(--panel-2); border: 1px solid var(--border); text-align: center;
+}
+.tw-corner { background: transparent !important; border-color: transparent !important; color: var(--text-dim); font-size: 10px !important; }
+.tw-head { background: var(--gold) !important; color: var(--primary-fg) !important; border-color: var(--gold) !important; }
+.tw-none { color: var(--state-quartered); opacity: 0.7; }
+.tw-split { font-size: 9px; color: var(--gold); }
 /* Inline rule references inside prose */
 .rule-ref {
   display: inline; padding: 0; margin: 0; border: none; background: none; min-height: 0;
