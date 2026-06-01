@@ -137,10 +137,23 @@ function unitRulesView(idx, src, kind, options = []) {
     return defEntry(name, def, meta);
   });
 
+  // "Team" units (Vault Warden Team, drums…) field several included models for one price and
+  // often hide their own (empty) stats — show each included model's profile instead.
+  const included = (src.includes || []).map((inc) => {
+    const sub = idx.warriors.find((u) => u.name === inc.name) || idx.heroes.find((u) => u.name === inc.name);
+    if (!sub) return null;
+    return el('.rs-def', {}, [
+      el('.rs-def-name', {}, sub.name),
+      statBlock(sub, (sub.unitType || []).includes('Hero')),
+      (sub.specialRules || []).length ? el('.muted.small', {}, 'Special: ' + sub.specialRules.join(', ')) : null,
+    ]);
+  }).filter(Boolean);
+
   return el('.rules-body', {}, [
     el('h3', {}, src.name),
     el('.rs-type.muted.small', {}, (src.unitType || []).join(' · ')),
-    statBlock(src, isHero, mods),
+    src.hideStats ? el('.rs-pts.muted.small', {}, `${Number(src.points) || 0} pts · ${included.length} models`) : statBlock(src, isHero, mods),
+    included.length ? section(`Includes (${included.length} models)`, included) : null,
     section('Wargear', wargear),
     section('Upgrades', upgrades),
     section('Special Rules', special),

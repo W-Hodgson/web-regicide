@@ -67,6 +67,9 @@ export function makeRosterUnit(unit, kind, { count = 1, options = [], heroicTier
     kind,
     count: kind === 'hero' ? 1 : Math.max(1, count),
     heroicTier,
+    // "Team" units (Vault Warden Team, drums, war beasts…) buy several models for one price
+    // via an `includes` list — record how many models each purchase fields.
+    modelsPerUnit: (unit.includes && unit.includes.length) || 1,
     options: options.map((o) => ({
       name: o.name,
       points: Number(o.points) || 0,
@@ -91,7 +94,8 @@ export function rUnitPoints(runit, basePoints) {
 }
 
 export function rUnitModels(runit) {
-  const base = runit.kind === 'hero' ? 1 : runit.count;
+  const per = runit.modelsPerUnit || 1; // models fielded per purchase (e.g. Vault Warden Team = 2)
+  const base = (runit.kind === 'hero' ? 1 : runit.count) * per;
   const added = runit.options.reduce((s, o) => s + (o.addsModels || 0), 0);
   return base + added;
 }
