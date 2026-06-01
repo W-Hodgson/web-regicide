@@ -48,10 +48,14 @@ function confirmWipe(action) {
 }
 
 function render() {
+  // render() rebuilds the whole builder DOM, which loses the page scroll position. Preserve
+  // it so adjusting a unit deep in the list doesn't jump you back to the top.
+  const y = window.scrollY;
   if (roster.faction) ensureFactionRequirements();
   renderFaction();
   renderSummary();
   renderWarbands();
+  if (window.scrollY !== y) window.scrollTo(0, y);
 }
 
 // Auto-include any units a faction mandates (faction.requiredChildren). They're added once,
