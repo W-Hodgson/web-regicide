@@ -177,6 +177,7 @@ dialog::backdrop { background: var(--backdrop); }
 
 /* ── Game setup ── */
 .setup-modes { display: grid; gap: 10px; margin: 8px 0; }
+.transport-choice { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .or { text-align: center; font-size: 12px; }
 .join-row { display: flex; gap: 8px; }
 .join-row input { flex: 1; text-transform: uppercase; letter-spacing: 2px; }

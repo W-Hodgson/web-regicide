@@ -72,6 +72,9 @@ export async function deleteRoom(code) {
   await deleteDoc(doc(db, ROOMS, code));
 }
 
+// Cloud transport is stateless per call — nothing to tear down (matches p2p.js's interface).
+export function teardown() {}
+
 async function sweepStaleRooms() {
   const { db, collection, query, where, getDocs, deleteDoc } = await firestore();
   const cutoff = new Date(Date.now() - STALE_MS);

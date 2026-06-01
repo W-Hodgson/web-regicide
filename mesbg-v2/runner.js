@@ -2,7 +2,8 @@
 //
 // Two ways to play:
 //   • Single device — one screen tracks both armies (no network).
-//   • Two devices    — synced through Firestore (see room.js). The host is authoritative:
+//   • Two devices    — synced through a transport (Firestore room.js, or Trystero p2p.js).
+//                      The host is authoritative:
 //                      it writes the game state to the room doc; the guest reads it live via
 //                      onSnapshot and submits its moves as action docs the host applies.
 //                      Works on any network (no WebRTC / NAT / TURN), unlike old Trystero.
@@ -11,8 +12,13 @@
 
 import { el, $, clear, eyeIcon } from './ui.js';
 import { openUnitRules, openArmyRules } from './rulesview.js';
-import * as room from './room.js';
+import * as cloud from './room.js';
 import * as G from './gengine.js';
+
+// Transports share one interface (see room.js / p2p.js). Cloud is bundled; the P2P (Trystero)
+// transport is loaded on demand so its SDK isn't fetched unless someone picks "Direct".
+let p2pMod = null;
+async function loadP2P() { return (p2pMod ||= await import('./p2p.js')); }
 
 const ROOM_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_LEN = 5;
@@ -33,6 +39,8 @@ const S = {
   peerRoster: null,
   isHost: false, mySide: 0,
   roomCode: null,
+  transport: cloud,            // active transport (cloud by default; p2p when chosen/detected)
+  hostTransportChoice: 'cloud', // what a new room the user hosts will use
   unsubRoom: null, unsubActions: null,
   actionSeq: 0,
   game: null, log: [],
@@ -50,8 +58,15 @@ export function initRunner(dataIndex, context) {
   $('player-name').addEventListener('input', (e) => { S.name = e.target.value.trim() || 'Captain'; });
   $('start-battle-btn').addEventListener('click', onStart);
   $('game-leave-btn').addEventListener('click', leave);
+  // Connection toggle for hosting: Cloud (reliable) vs Direct/P2P (lower latency).
+  $('transport-toggle').querySelectorAll('button').forEach((b) =>
+    b.addEventListener('click', () => {
+      S.hostTransportChoice = b.dataset.t;
+      $('transport-toggle').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
+    }),
+  );
   // Best-effort: if the host closes the tab, remove their room (the createRoom sweep is the backstop).
-  window.addEventListener('pagehide', () => { if (S.isHost && S.roomCode) room.deleteRoom(S.roomCode); });
+  window.addEventListener('pagehide', () => { if (S.isHost && S.roomCode) S.transport.deleteRoom(S.roomCode); });
 }
 
 export async function openPlay() {
@@ -73,9 +88,11 @@ export async function openPlay() {
 function resetState() {
   if (S.unsubRoom) S.unsubRoom();
   if (S.unsubActions) S.unsubActions();
+  try { S.transport?.teardown?.(); } catch { /* ignore */ }
   Object.assign(S, {
     mode: null, myRoster: null, peerRoster: null,
     isHost: false, mySide: 0, roomCode: null,
+    transport: cloud,
     unsubRoom: null, unsubActions: null, actionSeq: 0,
     game: null, log: [],
   });
@@ -112,7 +129,7 @@ function chooseMode(mode) {
     body.append(pickSide('Your army', '', (id) => {
       S.myRoster = S.rosters.find((r) => r.id === id) || null;
       $('start-battle-btn').disabled = !(S.myRoster && S.peerRoster);
-      if (S.roomCode && S.myRoster) room.patchRoom(S.roomCode, { hostRoster: S.myRoster, hostName: S.name });
+      if (S.roomCode && S.myRoster) S.transport.patchRoom(S.roomCode, { hostRoster: S.myRoster, hostName: S.name });
     }));
     body.append(el('.muted.small', { id: 'host-wait' }, ''));
     startBtn.textContent = 'Start (need opponent)';
@@ -136,29 +153,32 @@ function genCode() {
   return c;
 }
 
-function createRoom() {
+async function createRoom() {
   S.isHost = true;
   S.mySide = 0;
-  freshCode().then((code) => {
-    S.roomCode = code;
-    $('game-room-code').textContent = code;
-    setStatus(`Room ${code} — share this code with your opponent.`);
-    room.createRoom(code, { hostName: S.name, hostRoster: S.myRoster || null, guestRoster: null, guestName: null })
-      .catch((e) => setStatus('Could not create room: ' + (e.message || e)));
-    // Watch for the guest joining (lobby phase only — during play the host watches actions).
-    S.unsubRoom = room.watchRoom(code, (data) => {
-      if (!data || S.game) return;
-      S.peerRoster = data.guestRoster || null;
-      updateHostWait();
-      $('start-battle-btn').disabled = !(S.myRoster && S.peerRoster);
-    });
+  // Pick the transport the user chose for hosting (load the P2P module on demand).
+  S.transport = S.hostTransportChoice === 'p2p' ? await loadP2P() : cloud;
+  const code = await freshCode();
+  S.roomCode = code;
+  $('game-room-code').textContent = code;
+  const via = S.transport === cloud ? 'cloud' : 'direct';
+  setStatus(`Room ${code} (${via}) — share this code with your opponent.`);
+  S.transport.createRoom(code, { hostName: S.name, hostRoster: S.myRoster || null, guestRoster: null, guestName: null })
+    .catch((e) => setStatus('Could not create room: ' + (e.message || e)));
+  // Watch for the guest joining (lobby phase only — during play the host watches actions).
+  S.unsubRoom = S.transport.watchRoom(code, (data) => {
+    if (!data || S.game) return;
+    S.peerRoster = data.guestRoster || null;
+    updateHostWait();
+    $('start-battle-btn').disabled = !(S.myRoster && S.peerRoster);
   });
 }
 
 async function freshCode() {
+  if (S.transport !== cloud) return genCode(); // P2P has no central registry to collide with
   for (let i = 0; i < 5; i++) {
     const c = genCode();
-    try { if (!(await room.roomExists(c))) return c; } catch { return c; }
+    try { if (!(await S.transport.roomExists(c))) return c; } catch { return c; }
   }
   return genCode();
 }
@@ -167,10 +187,15 @@ async function onJoin() {
   const code = $('join-code').value.trim().toUpperCase();
   if (code.length !== ROOM_LEN) return;
   setStatus(`Looking for room ${code}…`);
-  let exists;
-  try { exists = await room.roomExists(code); }
-  catch (e) { setStatus('Error reaching the server: ' + (e.message || e)); return; }
-  if (!exists) { setStatus(`No room found with code ${code}.`); return; }
+  // Auto-detect the host's transport: try cloud first (instant), then direct P2P (a few seconds).
+  let found = false;
+  try { if (await cloud.roomExists(code)) { S.transport = cloud; found = true; } } catch { /* fall through to P2P */ }
+  if (!found) {
+    setStatus(`Trying a direct connection to ${code}…`);
+    try { const p = await loadP2P(); if (await p.roomExists(code)) { S.transport = p; found = true; } }
+    catch (e) { setStatus('Connection error: ' + (e.message || e)); return; }
+  }
+  if (!found) { setStatus(`No room found with code ${code}.`); return; }
 
   S.mode = 'client';
   S.isHost = false;
@@ -183,13 +208,13 @@ async function onJoin() {
   $('start-battle-btn').hidden = true;
   body.append(pickSide('Your army', '', (id) => {
     S.myRoster = S.rosters.find((r) => r.id === id) || null;
-    if (S.myRoster) room.patchRoom(code, { guestRoster: S.myRoster, guestName: S.name });
+    if (S.myRoster) S.transport.patchRoom(code, { guestRoster: S.myRoster, guestName: S.name });
   }));
   body.append(el('.muted.small', {}, `Joined room ${code}. Choose your army, then wait for the host to start.`));
   setStatus(`Joined room ${code}.`);
 
-  S.unsubRoom = room.watchRoom(code, (data) => {
-    if (!data) { setStatus('Host closed the room.'); leave(); return; }
+  S.unsubRoom = S.transport.watchRoom(code, (data) => {
+    if (!data) { setStatus('Host closed the S.transport.'); leave(); return; }
     if (data.status === 'playing' && data.game) {
       S.game = data.game;
       S.log = data.log || [];
@@ -229,7 +254,7 @@ function onStart() {
     if (!S.myRoster || !S.peerRoster) return;
     S.game = G.createGame(S.myRoster, S.peerRoster); // side 0 = host, side 1 = guest
     S.log = [];
-    S.unsubActions = room.watchActions(S.roomCode, onGuestAction); // apply the guest's moves
+    S.unsubActions = S.transport.watchActions(S.roomCode, onGuestAction); // apply the guest's moves
     pushState();
     ctx.nav('game'); renderGame();
   }
@@ -240,7 +265,7 @@ function onStart() {
 // A guest move arrives as an action doc; apply it (anti-cheat: guest may only edit side 1).
 function onGuestAction(action) {
   if (S.game && action.armyIdx === 1) apply(action);
-  if (S.roomCode) room.deleteAction(S.roomCode, action.id).catch(() => {});
+  if (S.roomCode) S.transport.deleteAction(S.roomCode, action.id).catch(() => {});
 }
 
 function apply(action) {
@@ -259,13 +284,13 @@ function apply(action) {
 // Host writes the authoritative game state to the room doc; the guest reads it via watchRoom.
 function pushState() {
   if (S.mode !== 'host' || !S.roomCode) return;
-  room.patchRoom(S.roomCode, { status: 'playing', game: S.game, log: S.log }).catch(() => {});
+  S.transport.patchRoom(S.roomCode, { status: 'playing', game: S.game, log: S.log }).catch(() => {});
 }
 
 // Local dispatch from the UI.
 function dispatch(action) {
   if (S.mode === 'solo' || S.isHost) { apply(action); return; }
-  if (S.roomCode) room.sendAction(S.roomCode, { ...action, seq: ++S.actionSeq }).catch(() => {}); // guest → host
+  if (S.roomCode) S.transport.sendAction(S.roomCode, { ...action, seq: ++S.actionSeq }).catch(() => {}); // guest → host
 }
 
 // ── Rendering ────────────────────────────────────────────────────────────────
@@ -354,8 +379,8 @@ function fmtEvent(e) {
 
 function leave() {
   const code = S.roomCode;
-  if (S.isHost && code) room.deleteRoom(code).catch(() => {});
-  else if (S.mode === 'client' && code) room.patchRoom(code, { guestRoster: null, guestName: null }).catch(() => {});
+  if (S.isHost && code) S.transport.deleteRoom(code).catch(() => {});
+  else if (S.mode === 'client' && code) S.transport.patchRoom(code, { guestRoster: null, guestName: null }).catch(() => {});
   resetState();
   if (ctx.exit) ctx.exit(); else ctx.nav('home');
 }

@@ -82,6 +82,13 @@
       <div class="setup-modes">
         <button id="mode-solo" class="primary">Track on this device</button>
         <div class="or muted">— or play across two devices —</div>
+        <div class="transport-choice">
+          <span class="muted small">New room connection</span>
+          <div class="align-toggle" id="transport-toggle">
+            <button type="button" data-t="cloud" class="active">Cloud</button>
+            <button type="button" data-t="p2p">Direct · faster</button>
+          </div>
+        </div>
         <button id="mode-create">Create a room</button>
         <div class="join-row">
           <input id="join-code" type="text" placeholder="ROOM" maxlength="5" autocomplete="off" spellcheck="false">
