@@ -120,6 +120,8 @@ dialog::backdrop { background: var(--backdrop); }
   display: flex; align-items: center; justify-content: center;
 }
 .dialog-body > h3, .rules-body > h3 { padding-right: 38px; }
+/* Subtitle right after the h3 can still flow under the absolute close X — clear it too */
+.rules-body > .rs-type { padding-right: 46px; }
 .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .dialog-actions button { min-width: 84px; }
 .error-text { color: var(--red); }
