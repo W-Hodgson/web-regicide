@@ -3,7 +3,7 @@
 #root {
   max-width: 880px;
   margin: 0 auto;
-  padding: calc(16px + var(--safe-top)) 14px calc(40px + var(--safe-bottom));
+  padding: 16px 14px calc(40px + var(--safe-bottom));
 }
 .screen { animation: fade 0.18s ease; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
