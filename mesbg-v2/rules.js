@@ -144,15 +144,21 @@ export function annotate(idx, roster) {
     };
   });
 
-  // Army-wide weapon counts (limits operate on the 'warriors' property).
+  // Army-wide weapon counts (limits operate on the 'warriors' property). Exempt units
+  // (ignoreLimits) still count as warrior models — they just aren't counted as armed
+  // with the limited weapon.
   let totalWarriorModels = 0;
   let bows = 0;
   let throwers = 0;
   for (const e of allUnits) {
     if (e.runit.kind !== 'warrior') continue;
     totalWarriorModels += e.models;
-    if (entryHasGearType(e.runit, idx, 'bow')) bows += e.models;
-    if (entryHasGearType(e.runit, idx, 'throwingWeapon')) throwers += e.models;
+    // Per-entry flags are kept so validate() can re-aggregate per faction group
+    // (overrideLimits) without re-deriving gear types.
+    e.countsBow = entryHasGearType(e.runit, idx, 'bow') && !entryIgnoresLimit(roster, e.src, 'bow');
+    e.countsThrow = entryHasGearType(e.runit, idx, 'throwingWeapon') && !entryIgnoresLimit(roster, e.src, 'throwingWeapon');
+    if (e.countsBow) bows += e.models;
+    if (e.countsThrow) throwers += e.models;
   }
 
   const points = warbands.reduce((s, w) => s + w.points, 0);
@@ -175,6 +181,35 @@ export function annotate(idx, roster) {
 function lookupUnit(idx, runit) {
   const list = runit.kind === 'hero' ? idx.heroes : idx.warriors;
   return list.find((u) => u.name === runit.name) || null;
+}
+
+// Is this unit exempt from an army-wide weapon limit? Units declare exemptions via
+// `ignoreLimits`, in three shapes:
+//   { type }                  — always exempt (e.g. Bain, Son of Bard)
+//   { type, in: [factions] }  — exempt when the army is one of the listed factions
+//                               (e.g. Riders of Rohan in Kingdom of Rohan)
+//   { type, with: [tokens] }  — exempt when EVERY token holds; a token is the army's
+//                               faction name or the name of a unit in the army (e.g.
+//                               Rivendell Knights in a Rivendell army that includes
+//                               Elrond, Master of Rivendell).
+function entryIgnoresLimit(roster, src, type) {
+  for (const il of asArr(src?.ignoreLimits)) {
+    if (il.type !== type) continue;
+    if (il.in && !asArr(il.in).includes(roster.faction)) continue;
+    if (il.with && !asArr(il.with).every((t) => tokenInArmy(roster, t))) continue;
+    return true;
+  }
+  return false;
+}
+
+// A `with` token holds when it names the army's faction or a unit present in the army.
+function tokenInArmy(roster, token) {
+  if (token === roster.faction) return true;
+  for (const wb of roster.warbands || []) {
+    if (wb.leader?.name === token) return true;
+    if ((wb.followers || []).some((f) => f.name === token)) return true;
+  }
+  return false;
 }
 
 // ── Validation ───────────────────────────────────────────────────────────────
@@ -201,16 +236,45 @@ export function validate(idx, roster) {
   if (a.heroes === 0) errors.push('An army must include at least one Hero to be its General.');
   if (a.models === 0) errors.push('Add at least one model to the roster.');
 
-  // 4/5. Bow / throwing-weapon percentage limits (from data.limits).
+  // 4/5. Bow / throwing-weapon percentage limits (from data.limits). Factions can
+  //      adjust the percentage (adjustLimits, e.g. Harad's 50% bows) or replace the
+  //      army-wide check with a per-faction-group one (overrideLimits with by:'faction',
+  //      e.g. Erebor & Dale: 50% of Dale models with bows, 50% of Erebor models with
+  //      throwing weapons — grouped by each unit's `faction` property).
+  const armyFaction = idx.getFaction(roster.faction);
+  const maxFor = (denom, pct, roundUp) =>
+    roundUp ? Math.ceil((denom * pct) / 100) : Math.floor((denom * pct) / 100);
   for (const lim of idx.limits) {
+    const counts = (e) => (lim.type === 'bow' ? e.countsBow : lim.type === 'throwingWeapon' ? e.countsThrow : false);
+    const override = asArr(armyFaction?.overrideLimits).find((o) => o.type === lim.type);
+
+    if (override?.by === 'faction') {
+      const groups = new Map(); // unit faction -> { models, armed }
+      for (const wb of a.warbands) for (const e of wb.entries) {
+        if (e.runit.kind !== 'warrior') continue;
+        const key = asArr(e.src?.faction)[0] || roster.faction;
+        const g = groups.get(key) || { models: 0, armed: 0 };
+        g.models += e.models;
+        if (counts(e)) g.armed += e.models;
+        groups.set(key, g);
+      }
+      for (const [name, g] of groups) {
+        const maxAllowed = maxFor(g.models, override.percentage, lim.roundUp);
+        if (g.armed > maxAllowed) {
+          errors.push(`Too many ${name} ${lim.label}: ${g.armed}/${maxAllowed} allowed (max ${override.percentage}% of ${g.models} ${name} warriors).`);
+        }
+      }
+      continue;
+    }
+
     const have = lim.type === 'bow' ? a.bows : lim.type === 'throwingWeapon' ? a.throwers : 0;
     const denom = a.totalWarriorModels;
     if (!denom) continue;
-    const maxAllowed = lim.roundUp
-      ? Math.ceil((denom * lim.maximumPercentage) / 100)
-      : Math.floor((denom * lim.maximumPercentage) / 100);
+    const adjust = asArr(armyFaction?.adjustLimits).find((x) => x.type === lim.type);
+    const pct = adjust ? adjust.percentage : lim.maximumPercentage;
+    const maxAllowed = maxFor(denom, pct, lim.roundUp);
     if (have > maxAllowed) {
-      errors.push(`Too many ${lim.label}: ${have}/${maxAllowed} allowed (max ${lim.maximumPercentage}% of ${denom} warriors).`);
+      errors.push(`Too many ${lim.label}: ${have}/${maxAllowed} allowed (max ${pct}% of ${denom} warriors).`);
     }
   }
 
@@ -293,6 +357,8 @@ export function validate(idx, roster) {
 // an OR-list of requirement groups. A group is `{ all: [conditions] }` (or a bare condition
 // / string). A condition `{ in: X, ifLeader? }` is met when X equals the army's faction, or
 // a unit named/keyworded X is in the army — or, with ifLeader, leads THIS warband.
+// A condition `{ with: X }` is met only by a unit X in the army (never the faction name) —
+// e.g. Blackroot Vale Archers in The Fiefdoms `with` Duinhir, Lord of the Blackroot Vale.
 export function unitAvailable(idx, roster, unit, warband) {
   const av = unit.availableIn;
   if (!av || !av.length) return true; // not gated
@@ -309,8 +375,8 @@ export function unitAvailable(idx, roster, unit, warband) {
     for (const f of wb.followers || []) armyUnits.push(f);
   }
   const condHolds = (c) => {
-    const token = typeof c === 'string' ? c : c.in;
-    if (token === roster.faction) return true;
+    const token = typeof c === 'string' ? c : c.in ?? c.with;
+    if ((typeof c === 'string' || c.in != null) && token === roster.faction) return true;
     if (typeof c === 'object' && c.ifLeader) return matchesToken(warband?.leader, token);
     return armyUnits.some((u) => matchesToken(u, token));
   };
