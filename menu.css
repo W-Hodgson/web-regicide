@@ -50,6 +50,19 @@
   font-size: 14px;
   line-height: 1.5;
 }
+.tile-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.tile-links a {
+  padding: 8px 14px;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tile-links a:hover { border-color: var(--gold); background: var(--button-hover-bg); }
+
 .tile-tag {
   margin-top: auto;
   padding-top: 4px;
