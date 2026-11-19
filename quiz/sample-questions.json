@@ -1,0 +1,110 @@
+{
+  "title": "Buzzkill",
+  "starters": [
+    {
+      "q": "Which element, with atomic number 79, has the chemical symbol Au?",
+      "a": "Gold",
+      "bonuses": {
+        "topic": "Moons",
+        "questions": [
+          {
+            "q": "Titan is the largest moon of which planet?",
+            "a": "Saturn"
+          },
+          {
+            "q": "Phobos and Deimos orbit which planet?",
+            "a": "Mars"
+          }
+        ]
+      }
+    },
+    {
+      "q": "In which city does the Brandenburg Gate stand?",
+      "a": "Berlin",
+      "bonuses": {
+        "topic": "Rivers",
+        "questions": [
+          {
+            "q": "Which river flows through Budapest?",
+            "a": "Danube"
+          },
+          {
+            "q": "Which river flows through the centre of Paris?",
+            "a": "Seine"
+          }
+        ]
+      }
+    },
+    {
+      "q": "What is the longest bone in the human body?",
+      "a": "Femur",
+      "note": "Accept thigh bone",
+      "bonuses": {
+        "topic": "Prime numbers",
+        "questions": [
+          {
+            "q": "What is the largest prime number below 100?",
+            "a": "97"
+          },
+          {
+            "q": "How many prime numbers are there between 1 and 20?",
+            "a": "8",
+            "note": "2, 3, 5, 7, 11, 13, 17, 19"
+          }
+        ]
+      }
+    },
+    {
+      "q": "Who wrote the novel Pride and Prejudice, published in 1813?",
+      "a": "Jane Austen",
+      "bonuses": {
+        "topic": "Shakespeare",
+        "questions": [
+          {
+            "q": "In which play does the magician Prospero appear?",
+            "a": "The Tempest"
+          },
+          {
+            "q": "Which play contains the line 'Out, damned spot!'?",
+            "a": "Macbeth"
+          }
+        ]
+      }
+    },
+    {
+      "q": "What is the capital city of Australia?",
+      "a": "Canberra",
+      "bonuses": {
+        "topic": "Programming languages",
+        "questions": [
+          {
+            "q": "Which language, created by Guido van Rossum, is named after a comedy group?",
+            "a": "Python"
+          },
+          {
+            "q": "Which language did Brendan Eich create in about ten days in 1995?",
+            "a": "JavaScript",
+            "note": "Originally called Mocha, then LiveScript"
+          }
+        ]
+      }
+    },
+    {
+      "q": "How many sides does a dodecagon have?",
+      "a": "12",
+      "bonuses": {
+        "topic": "The planets",
+        "questions": [
+          {
+            "q": "Which planet is closest to the Sun?",
+            "a": "Mercury"
+          },
+          {
+            "q": "Which planet has the shortest day, at around ten hours?",
+            "a": "Jupiter"
+          }
+        ]
+      }
+    }
+  ]
+}
