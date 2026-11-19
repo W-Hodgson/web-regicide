@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f1419">
+<meta name="robots" content="noindex">
+<title>Buzzkill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../theme.css">
+<link rel="stylesheet" href="quiz.css">
+</head>
+<body class="show">
+  <div id="waiting" class="waiting">
+    <h1>B<span class="buzzer-u">u</span>zzkill</h1>
+    <p class="muted">Dragon Drop Qopenhagen Quiz</p>
+  </div>
+
+  <div id="stage" class="stage" hidden>
+    <aside class="meter team-0" id="team-0">
+      <div class="meter-head"><span class="key">A</span><span class="meter-name"></span></div>
+      <div class="meter-score"></div>
+      <div class="meter-track">
+        <div class="meter-fill"></div>
+        <span class="tick" style="bottom:25%"></span>
+        <span class="tick" style="bottom:50%"></span>
+        <span class="tick" style="bottom:75%"></span>
+      </div>
+    </aside>
+
+    <div class="stage-main">
+      <main class="screen" id="screen"></main>
+      <div class="timer-bar" id="timer" hidden><div class="timer-fill" id="timer-fill"></div><span class="timer-num" id="timer-num"></span></div>
+    </div>
+
+    <aside class="meter team-1" id="team-1">
+      <div class="meter-head"><span class="key">B</span><span class="meter-name"></span></div>
+      <div class="meter-score"></div>
+      <div class="meter-track">
+        <div class="meter-fill"></div>
+        <span class="tick" style="bottom:25%"></span>
+        <span class="tick" style="bottom:50%"></span>
+        <span class="tick" style="bottom:75%"></span>
+      </div>
+    </aside>
+  </div>
+
+  <button id="fullscreen" class="fs-btn" type="button">Full screen</button>
+
+  <script src="shared.js"></script>
+  <script src="show.js"></script>
+</body>
+</html>
