@@ -36,72 +36,69 @@
       }
     },
     {
-      "q": "What is the longest bone in the human body?",
-      "a": "Femur",
-      "note": "Accept thigh bone",
+      "q": "Which football team has the nickname 'The Bees'?",
+      "a": "Brentford",
       "bonuses": {
-        "topic": "Prime numbers",
+        "topic": "Sporting Nicknames",
         "questions": [
           {
-            "q": "What is the largest prime number below 100?",
-            "a": "97"
+            "q": "The All Blacks is the nickname for the New Zealand rugby union team. In what sport do the Tall Blacks represent the nation?",
+            "a": "Basketball"
           },
           {
-            "q": "How many prime numbers are there between 1 and 20?",
-            "a": "8",
-            "note": "2, 3, 5, 7, 11, 13, 17, 19"
+            "q": "And the Diamondblacks?",
+            "a": "Baseball"
           }
         ]
       }
     },
     {
-      "q": "Who wrote the novel Pride and Prejudice, published in 1813?",
-      "a": "Jane Austen",
+      "q": "Known as 'Cottonopolis', which city was at the heart of the cotton industry during the Industrial Revolution?",
+      "a": "Manchester",
       "bonuses": {
-        "topic": "Shakespeare",
+        "topic": "Products of the industrial revolution",
         "questions": [
           {
-            "q": "In which play does the magician Prospero appear?",
-            "a": "The Tempest"
+            "q": "The city of Bradford was most famous for its production of which material?",
+            "a": "Wool"
           },
           {
-            "q": "Which play contains the line 'Out, damned spot!'?",
-            "a": "Macbeth"
+            "q": "Sheffield was most closely associated with the production of which metal?",
+            "a": "Steel"
           }
         ]
       }
     },
     {
-      "q": "What is the capital city of Australia?",
-      "a": "Canberra",
+      "q": "What links a common clothing fastener and a regular character in British Pantomime, and a Cadbury's chocolate?",
+      "a": "Buttons",
       "bonuses": {
-        "topic": "Programming languages",
+        "topic": "Buttons",
         "questions": [
           {
-            "q": "Which language, created by Guido van Rossum, is named after a comedy group?",
-            "a": "Python"
+            "q": "The earliest known buttons were found in the Indus valley. Were they made from Seashells, Cow Bones, or Bronze?",
+            "a": "Seashells"
           },
           {
-            "q": "Which language did Brendan Eich create in about ten days in 1995?",
-            "a": "JavaScript",
-            "note": "Originally called Mocha, then LiveScript"
+            "q": "In a classic episode of The Simpsons, Homer sets up a drinking bird toy to repeatedly hit which button on his keyboard - with disastrous consequences?",
+            "a": "Y"
           }
         ]
       }
     },
     {
-      "q": "How many sides does a dodecagon have?",
-      "a": "12",
+      "q": "Born in February 1963, which Taiwanese engineer and entrepreneur - known for his leather jackets and gullibility - would go on to found NVIDIA?",
+      "a": "Jensen Huang",
       "bonuses": {
-        "topic": "The planets",
+        "topic": "Corporate Disasters",
         "questions": [
           {
-            "q": "Which planet is closest to the Sun?",
-            "a": "Mercury"
+            "q": "Which company declined to buy Netflix for $50 million in the year 2000?",
+            "a": "Blockbuster"
           },
           {
-            "q": "Which planet has the shortest day, at around ten hours?",
-            "a": "Jupiter"
+            "q": "Which healthcare company, founded in 2003 by Elizabeth Holmes, raised nearly a billion dollars for a blood testing product that never existed?",
+            "a": "Theranos"
           }
         ]
       }

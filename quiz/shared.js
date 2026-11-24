@@ -1,18 +1,8 @@
-// Shared bits for the quiz control panel (admin) and the show screen.
-// Both pages run in the same browser on the same laptop and talk over a
-// BroadcastChannel — no server, no network.
-
-const QUIZ_CHANNEL = 'quiz-night';
+// Small helpers for the Buzzkill game page.
 
 // The physical buzzers type a letter, like a USB keyboard.
 const BUZZER_KEYS = { a: 0, b: 1 };
 const TEAM_LETTERS = ['A', 'B'];
-
-function createChannel(onMessage) {
-  const ch = new BroadcastChannel(QUIZ_CHANNEL);
-  ch.onmessage = (e) => onMessage(e.data || {});
-  return ch;
-}
 
 // Team index (0/1) for a buzzer keydown, or null if it isn't one.
 // Ignores key-repeat and shortcuts like Cmd+A.
