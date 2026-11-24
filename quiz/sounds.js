@@ -1,7 +1,8 @@
-// Soundboard for the control panel. All audio plays from the control window
-// (browsers block audio in windows nobody has clicked, like the show screen).
-// Built-in sounds are synthesised with Web Audio; extra sound files can be
-// added and are kept in IndexedDB on this laptop only.
+// Soundboard and game sounds for the Buzzkill page. Audio only starts once
+// the page has been clicked (browsers block it before then).
+// The soundboard plays the recorded clips in quiz_sounds/. Game events
+// (correct, wrong, time up...) use sounds synthesised with Web Audio. Extra
+// sound files can be added and are kept in IndexedDB on this laptop only.
 
 const Sounds = (function () {
   let ctx = null;
@@ -9,6 +10,19 @@ const Sounds = (function () {
   let volume = 0.8;
   let noiseBuf = null;
   const custom = []; // { id, name, buffer }
+
+  // Recorded clips shipped with the quiz, resolved next to this script.
+  // A static site can't list a folder, so new files must be added here.
+  const clipBase = new URL('quiz_sounds/', document.currentScript.src);
+  const CLIP_FILES = [
+    'Welcome', 'Ding dong', 'Lets have it',
+    'Adam', 'Diogo', 'Eve', 'Huw', 'John', 'Jonathan', 'Suganya',
+    'Team huw winners', 'Team Huw loosers',
+    'Team Jonathan winners', 'Team Jonathan loosers',
+  ];
+  const clipList = CLIP_FILES.map((name) => ({ id: 'clip:' + name, name, buffer: null, loading: null }));
+  // Buzzer sounds are clips; the synth version is only a fallback.
+  const ALIASES = { buzzA: 'clip:Ding dong', buzzB: 'clip:Lets have it' };
 
   try {
     const v = parseFloat(localStorage.getItem('quiz-night-volume'));
@@ -117,18 +131,28 @@ const Sounds = (function () {
     } },
   ];
 
+  function playBuffer(buffer) {
+    const c = ac();
+    const src = c.createBufferSource();
+    src.buffer = buffer;
+    src.connect(master);
+    src.start();
+  }
+
   function play(id) {
     try {
+      const clip = clipList.find((c) => c.id === (ALIASES[id] || id));
+      if (clip && clip.buffer) { playBuffer(clip.buffer); return; }
+      // Not loaded yet (or failed): buzzers fall back to the synth,
+      // soundboard clips play as soon as they arrive.
+      if (clip && !ALIASES[id]) {
+        loadClip(clip).then(() => clip.buffer && playBuffer(clip.buffer));
+        return;
+      }
       const b = builtIn.find((s) => s.id === id);
       if (b) { b.play(); return; }
       const cst = custom.find((s) => s.id === id);
-      if (cst) {
-        const c = ac();
-        const src = c.createBufferSource();
-        src.buffer = cst.buffer;
-        src.connect(master);
-        src.start();
-      }
+      if (cst) playBuffer(cst.buffer);
     } catch (err) {
       console.warn('Could not play sound', id, err);
     }
@@ -173,7 +197,28 @@ const Sounds = (function () {
     return ac().decodeAudioData(bytes.slice(0));
   }
 
+  function loadClip(clip) {
+    if (!clip.loading) {
+      clip.loading = (async () => {
+        try {
+          const res = await fetch(new URL(encodeURIComponent(clip.name + '.m4a'), clipBase));
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          clip.buffer = await decode(await res.arrayBuffer());
+        } catch (err) {
+          console.warn('Could not load clip', clip.name, err);
+          clip.loading = null; // allow a retry on the next press
+        }
+      })();
+    }
+    return clip.loading;
+  }
+
+  function loadClips() {
+    return Promise.all(clipList.map(loadClip));
+  }
+
   async function loadSaved() {
+    loadClips();
     try {
       const rows = (await idbDo('readonly', (s) => s.getAll())) || [];
       rows.sort((a, b) => a.added - b.added);
@@ -213,7 +258,7 @@ const Sounds = (function () {
     play, stopAll, setVolume, addFiles, remove, loadSaved,
     get volume() { return volume; },
     list() {
-      return builtIn.map((s) => ({ id: s.id, label: s.label, custom: false }))
+      return clipList.map((s) => ({ id: s.id, label: s.name, custom: false }))
         .concat(custom.map((s) => ({ id: s.id, label: s.name, custom: true })));
     },
     unlock() { ac(); },
